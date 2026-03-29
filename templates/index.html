@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+
+<style>
+    /* ─── Multifind Keyword Table ─── */
+    .multifind-wrapper {
+        margin-bottom: 30px;
+    }
+
+    .mf-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 6px;
+        table-layout: fixed;
+    }
+
+    /* Column widths */
+    .mf-table col.col-brand-name {
+        width: 16%;
+    }
+
+    .mf-table col.col-lock {
+        width: 44px;
+    }
+
+    .mf-table col.col-brand-kw {
+        width: 21%;
+    }
+
+    .mf-table col.col-must-have {
+        width: 27%;
+    }
+
+    .mf-table col.col-shouldnt {
+        width: 28%;
+    }
+
+    .mf-table col.col-actions {
+        width: 40px;
+    }
+
+    .mf-table thead th {
+        padding: 8px 10px;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: transparent;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .mf-table thead th.col-center {
+        text-align: center;
+    }
+
+    .mf-table tbody tr {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+
+    .mf-table tbody tr:hover {
+        background: rgba(0, 210, 255, 0.05);
+    }
+
+    .mf-table tbody td {
+        padding: 6px 6px;
+        border-top: 1px solid transparent;
+        border-bottom: 1px solid transparent;
+        vertical-align: middle;
+    }
+
+    /* First and last cell rounded corners */
+    .mf-table tbody td:first-child {
+        border-radius: 10px 0 0 10px;
+        padding-left: 10px;
+    }
+
+    .mf-table tbody td:last-child {
+        border-radius: 0 10px 10px 0;
+        padding-right: 8px;
+    }
+
+    /* Cell labels above inputs */
+    .cell-label {
+        font-size: 0.65rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 2px;
+        display: block;
+    }
+
+    /* Input styling inside table cells */
+    .mf-input {
+        width: 100%;
+        padding: 7px 10px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.82rem;
+        font-family: 'Outfit', sans-serif;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .mf-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 8px rgba(0, 210, 255, 0.2);
+    }
+
+    /* Locked state – read-only display */
+    .mf-input[readonly] {
+        background: transparent;
+        border-color: transparent;
+        color: var(--text-primary);
+        cursor: default;
+        box-shadow: none;
+        padding-left: 2px;
+    }
+
+    /* Brand name in locked state gets accent highlight */
+    .mf-input.brand-name-input[readonly] {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.88rem;
+    }
+
+    /* Must-have pill display */
+    .pill-display {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        min-height: 30px;
+        padding: 2px 0;
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 20px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        white-space: nowrap;
+        margin: 1px 0;
+    }
+
+    .pill-blue {
+        background: rgba(0, 210, 255, 0.15);
+        color: var(--accent-color);
+        border: 1px solid rgba(0, 210, 255, 0.3);
+    }
+
+    .pill-red {
+        background: rgba(255, 107, 107, 0.15);
+        color: var(--danger-color);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    /* Lock / Settings buttons – override global button styles */
+    .icon-btn {
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 0 !important;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        border-radius: 8px;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s, background 0.2s, border-color 0.2s;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .icon-btn:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-primary);
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .icon-btn.locked {
+        background: rgba(0, 210, 255, 0.15) !important;
+        border-color: rgba(0, 210, 255, 0.4) !important;
+        color: var(--accent-color);
+    }
+
+    /* Delete button */
+    .icon-btn.delete-btn:hover {
+        color: var(--danger-color) !important;
+        background: rgba(255, 107, 107, 0.12) !important;
+        border-color: rgba(255, 107, 107, 0.3) !important;
+    }
+
+    /* Add Row Footer */
+    .mf-add-row td {
+        padding: 8px 0;
+        border-top: 1px solid var(--glass-border);
+    }
+
+    .add-row-btn {
+        background: none;
+        border: none;
+        color: var(--accent-color);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 4px;
+        transition: opacity 0.2s;
+        box-shadow: none;
+        transform: none;
+    }
+
+    .add-row-btn:hover {
+        opacity: 0.75;
+        transform: none;
+        box-shadow: none;
+        background: none;
+    }
+
+    /* Links section */
+    .links-section {
+        margin-bottom: 24px;
+    }
+
+    /* Results */
+    .results-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    /* Narrower glass panel for this tool */
+    .multifind-panel {
+        max-width: 1100px;
+    }
+
+    /* Scroll wrapper for the keyword table */
+    .mf-table-scroll {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+        padding: 4px 8px 8px;
+        background: rgba(0, 0, 0, 0.15);
+    }
+
+    /* Selected row highlight */
+    .mf-table tbody tr.is-analyzing {
+        background: rgba(0, 210, 255, 0.07);
+    }
+</style>
+
+{% block content %}
+<div class="analytics-container">
+    <div class="glass-panel multifind-panel">
+        <header>
+            <div class="logo">
+                <h1>Multi Find <span>Relevance</span></h1>
+            </div>
+            <p class="subtitle">Configure keyword rules per brand, then analyze links in bulk.</p>
+        </header>
+
+        <!-- ─── Keyword Rules ─── -->
+        <div class="multifind-wrapper">
+            <div class="results-summary"
+                style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <p style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; margin: 0;">
+                    Note: This is the keyword for display purpose in the charts, it'll not affect your feed.
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="secondary-btn" onclick="saveCurrentSetup()"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(0,210,255,0.4); color: var(--accent-color);">
+                        <i class="fa-solid fa-bookmark"></i> Save as Config
+                    </button>
+                    <button class="secondary-btn" onclick="addRuleBox()" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <i class="fa-solid fa-plus"></i> Add Another Rule
+                    </button>
+                </div>
+            </div>
+
+            <div id="keywordRulesContainer">
+
+
+
+                <!-- Initial Rule Box -->
+                <div class="single-brand-row rule-box" data-locked="false">
+
+                    <!-- Brand Keyword -->
+                    <div class="mf-field-group" style="flex: 1;">
+                        <label class="cell-label">Brand Keyword</label>
+                        <div class="input-with-lock">
+                            <input type="text" class="mf-input single-input brandKeyword" placeholder="e.g. Zoya">
+                            <button class="icon-btn single-lock-btn lockBtn" onclick="toggleLockBox(this)"
+                                title="Lock/Unlock fields">
+                                <i class="fa-solid fa-unlock"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Must Have -->
+                    <div class="mf-field-group" style="flex: 1.2;">
+                        <label class="cell-label">Must Have - Keywords</label>
+                        <div class="field-container mustHaveContainer">
+                            <input type="text" class="mf-input single-input mustHave" placeholder="e.g. Titan, Jewelry">
+                        </div>
+                    </div>
+
+                    <!-- Shouldn't Have -->
+                    <div class="mf-field-group" style="flex: 1.5;">
+                        <label class="cell-label">Shouldn't Have Keywords</label>
+                        <div class="field-container shouldntHaveContainer">
+                            <input type="text" class="mf-input single-input shouldntHave" placeholder="e.g. Imran">
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mf-field-group" style="justify-content: flex-end; padding-bottom: 2px;">
+                        <button class="icon-btn delete-btn" onclick="deleteRuleBox(this)" title="Delete rule"
+                            style="height: 35px; width: 35px; min-width: 35px; background: rgba(255,0,0,0.05) !important;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Input Mode Tabs ─── -->
+        <div style="margin-bottom: 16px;">
+            <div style="display:flex; gap:6px; border-bottom:1px solid var(--glass-border); padding-bottom:2px;">
+                <button id="tabUrlBtn" onclick="switchTab('url')" style="background:none;border:none;padding:7px 16px;font-size:0.83rem;font-weight:600;
+                           color:var(--accent-color);border-bottom:2px solid var(--accent-color);
+                           cursor:pointer;font-family:'Outfit',sans-serif;">
+                    <i class="fa-solid fa-link"></i> Paste URLs
+                </button>
+                <button id="tabCsvBtn" onclick="switchTab('csv')" style="background:none;border:none;padding:7px 16px;font-size:0.83rem;font-weight:600;
+                           color:var(--text-secondary);border-bottom:2px solid transparent;
+                           cursor:pointer;font-family:'Outfit',sans-serif;">
+                    <i class="fa-solid fa-file-csv"></i> Upload CSV (YouTube / Share of Voice)
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab 1: URL Paste -->
+        <div id="tabUrlPanel">
+            <div class="links-section">
+                <div class="form-group">
+                    <label for="links"><i class="fa-solid fa-link"></i> Paste Links (One per line)</label>
+                    <textarea id="links" rows="5"
+                        placeholder="https://example.com&#10;https://another-article.com"></textarea>
+                </div>
+            </div>
+            <div class="action-bar">
+                <button id="analyzeBtn" onclick="analyzeLinks()">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span class="btn-text">Analyze</span>
+                </button>
+                <div id="loader" class="loader hidden"></div>
+                <span id="progressText" style="color: var(--text-secondary); font-size: 0.85rem; display:none;"></span>
+            </div>
+        </div>
+
+        <!-- Tab 2: CSV Upload -->
+        <div id="tabCsvPanel" style="display:none;">
+            <div class="links-section">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-file-csv"></i> Upload YouTube / Share of Voice CSV</label>
+                    <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:10px;">
+                        CSV must have columns: <strong>URL</strong>, <strong>Headline</strong>, <strong>Youtube Channel
+                            Name</strong>.
+                        Keyword rules above will be applied to Headline + Channel Name directly — no fetching needed.
+                    </p>
+                    <div id="csvDropZone" style="border:2px dashed var(--glass-border);border-radius:12px;padding:28px 20px;
+                               text-align:center;cursor:pointer;transition:border-color 0.2s;
+                               background:rgba(0,0,0,0.1);" onclick="document.getElementById('csvFileInput').click()"
+                        ondragover="event.preventDefault();this.style.borderColor='var(--accent-color)'"
+                        ondragleave="this.style.borderColor='var(--glass-border)'" ondrop="handleCsvDrop(event)">
+                        <i class="fa-solid fa-cloud-upload-alt"
+                            style="font-size:1.8rem;color:var(--accent-color);margin-bottom:8px;"></i>
+                        <p style="color:var(--text-secondary);margin:0;font-size:0.85rem;" id="csvDropText">Click to
+                            browse or drag & drop your CSV here</p>
+                    </div>
+                    <input type="file" id="csvFileInput" accept=".csv" style="display:none"
+                        onchange="onCsvFileSelect(this)">
+                </div>
+            </div>
+            <div class="action-bar">
+                <button id="analyzeCsvBtn" onclick="analyzeCsv()">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Analyze CSV</span>
+                </button>
+                <div id="csvLoader" class="loader hidden"></div>
+                <span id="csvProgressText" style="color:var(--text-secondary);font-size:0.85rem;display:none;"></span>
+            </div>
+        </div>
+
+        <script>
+            // ── Tab switcher ──
+            function switchTab(tab) {
+                const isUrl = tab === 'url';
+                document.getElementById('tabUrlPanel').style.display = isUrl ? '' : 'none';
+                document.getElementById('tabCsvPanel').style.display = isUrl ? 'none' : '';
+                const accentStyle = 'color:var(--accent-color);border-bottom:2px solid var(--accent-color);';
+                const inactiveStyle = 'color:var(--text-secondary);border-bottom:2px solid transparent;';
+                document.getElementById('tabUrlBtn').style.cssText += isUrl ? accentStyle : inactiveStyle;
+                document.getElementById('tabCsvBtn').style.cssText += isUrl ? inactiveStyle : accentStyle;
+            }
+
+            let _csvFile = null;
+            function onCsvFileSelect(input) {
+                if (input.files && input.files[0]) {
+                    _csvFile = input.files[0];
+                    document.getElementById('csvDropText').textContent = '✅ ' + _csvFile.name;
+                }
+            }
+            function handleCsvDrop(e) {
+                e.preventDefault();
+                document.getElementById('csvDropZone').style.borderColor = 'var(--glass-border)';
+                const f = e.dataTransfer.files[0];
+                if (f && f.name.endsWith('.csv')) {
+                    _csvFile = f;
+                    document.getElementById('csvDropText').textContent = '✅ ' + f.name;
+                } else {
+                    alert('Please drop a .csv file');
+                }
+            }
+
+            async function analyzeCsv() {
+                if (!_csvFile) { alert('Please select a CSV file first.'); return; }
+
+                const configs = getAllConfigs();
+                if (!configs.length) { alert('Please add at least one keyword rule.'); return; }
+
+                const btn = document.getElementById('analyzeCsvBtn');
+                const ldr = document.getElementById('csvLoader');
+                const prog = document.getElementById('csvProgressText');
+
+                // Swap button to spinner state
+                const originalBtnHTML = btn.innerHTML;
+                btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px;">
+                    <span style="width:18px;height:18px;border:3px solid rgba(255,255,255,0.3);border-top-color:#fff;
+                        border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;flex-shrink:0;"></span>
+                    Analyzing CSV...
+                </span>`;
+                btn.disabled = true;
+                prog.style.display = 'none';
+
+                const form = new FormData();
+                form.append('csv_file', _csvFile);
+                form.append('configs', JSON.stringify(configs));
+
+                try {
+                    const resp = await fetch('/analyze_csv', { method: 'POST', body: form });
+                    if (!resp.ok) throw new Error(await resp.text());
+                    const data = await resp.json();
+                    globalResults = data.results || [];
+                    renderTable(globalResults);
+                    document.getElementById('resultsPanel').classList.remove('hidden');
+                    prog.style.display = 'inline';
+                    prog.textContent = `✓ Done! Found ${globalResults.filter(r => r.Status.startsWith('Relevant')).length} relevant result(s).`;
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                    prog.textContent = '';
+                } finally {
+                    btn.innerHTML = originalBtnHTML;
+                    btn.disabled = false;
+                    ldr.classList.add('hidden');
+                }
+            }
+        </script>
+
+
+        <!-- ─── Results ─── -->
+        <section id="resultsPanel" class="results-panel hidden">
+            <div class="results-summary">
+                <h3><i class="fa-solid fa-check-circle" style="color:var(--success-color);"></i> Results</h3>
+                <button class="secondary-btn" onclick="downloadCSV()">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+            </div>
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Brand Name</th>
+                            <th>Status</th>
+                            <th>URL</th>
+                            <th>Matched Keywords</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock %}

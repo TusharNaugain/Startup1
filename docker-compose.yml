@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  liberty-app:
+    build: .
+    container_name: liberty_classifier
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount the current directory to /app so changes invoke auto-reload (if debug=True)
+      # Remove this line if you want a static container
+      - .:/app
+    environment:
+      - FLASK_ENV=development

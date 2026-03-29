@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizikey Product Analysis</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="https://s3.amazonaws.com/wizikey-images/wizikey-logo-fb.png" alt="Wizikey Logo"
+                    style="max-height: 40px;">
+            </div>
+
+            <nav class="nav-links">
+                <a href="{{ url_for('home') }}" class="{% if request.path == '/' %}active{% endif %}">
+                    <i class="fa-solid fa-compass"></i>
+                    <span>Multi Find Relevant&Irrelevant link</span>
+                </a>
+                <a href="{{ url_for('analytics') }}" class="{% if request.path == '/analytics' %}active{% endif %}">
+                    <i class="fa-solid fa-table"></i>
+                    <span>Google Sheet</span>
+                </a>
+                <a href="{{ url_for('news_tool') }}" class="{% if request.path == '/news_tool' %}active{% endif %}">
+                    <i class="fa-solid fa-rss"></i>
+                    <span>News Extractor</span>
+                </a>
+                <a href="{{ url_for('excel_automater') }}"
+                    class="{% if request.path == '/excel_automater' %}active{% endif %}">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>Excel Automater</span>
+                </a>
+                <a href="{{ url_for('headline_tool') }}"
+                    class="{% if request.path == '/headline_tool' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Headline Analyzer</span>
+                </a>
+            </nav>
+
+            <!-- ─── Brands Section ─── -->
+            <div class="sidebar-brands" id="sidebarBrands">
+                <div class="sidebar-brands-header">
+                    <span><i class="fa-solid fa-building"
+                            style="color:var(--accent-color);margin-right:5px;"></i>Brands</span>
+                    <button class="sidebar-add-brand-btn" title="Add new brand" onclick="sidebarAddBrand()">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <div id="sidebarBrandList" class="sidebar-brand-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div class="user-profile">
+                <i class="fa-solid fa-user-circle"></i>
+                <span>Sujata Balasubramanium</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+<style>
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        flex-direction: column;
+    }
+
+    .loader {
+        border: 5px solid var(--bg-secondary);
+        border-top: 5px solid var(--accent-color);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+
+    .loading-text {
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 500;
+        letter-spacing: 1px;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+{% block content %}
+<!-- Loading Screen -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loader"></div>
+    <div class="loading-text">Analyzing Headlines...</div>
+    <div style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9rem;">Processing your data</div>
+</div>
+
+<div class="analytics-container">
+    <div class="glass-panel">
+        <header>
+            <div class="logo">
+                <h1>Headline <span>Analyzer</span></h1>
+            </div>
+            <p class="subtitle">Identify recurring and unique headlines from your CSV data.</p>
+        </header>
+
+        <form action="{{ url_for('process_headlines') }}" method="post" enctype="multipart/form-data" id="analyzerForm">
+            <div class="form-group">
+                <label for="csv_file">Upload File (CSV or Excel)</label>
+                <input type="file" id="csv_file" name="csv_file" accept=".csv, .xlsx, .xls" required>
+            </div>
+
+            <div class="form-group" style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="top_n">Quantity of Top Headlines</label>
+                    <input type="number" id="top_n" name="top_n" value="50" min="1" required>
+                    <small style="color: var(--text-secondary);">How many results to show?</small>
+                </div>
+                <div style="flex: 1;">
+                    <label for="min_freq">Minimum Repetitions</label>
+                    <input type="number" id="min_freq" name="min_freq" value="1" min="1" required>
+                    <small style="color: var(--text-secondary);">Show headlines appearing at least this many
+                        times.</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="sheet_name">Select Sheet</label>
+                <select id="sheet_name" name="sheet_name"
+                    style="width:100%;padding:15px;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);
+                           border-radius:12px;color:#fff;font-size:1rem;font-family:'Outfit',sans-serif;cursor:pointer;">
+                    <option value="">Upload a file to see available sheets...</option>
+                </select>
+                <small style="color: var(--text-secondary);">Select which sheet to analyze from the uploaded
+                    file.</small>
+            </div>
+
+            <div class="action-bar">
+                <button type="submit" id="analyzeBtn">
+                    <i class="fa-solid fa-chart-pie"></i> Analyze Headlines
+                </button>
+            </div>
+        </form>
+
+        {% if result %}
+        <div class="results-panel">
+            <div class="results-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Analysis Results</h3>
+                <button onclick="exportTableToCSV('top_headlines.csv')" class="export-btn"
+                    style="background: var(--accent-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Headline</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if result.top %}
+                        {% for row in result.top %}
+                        <tr>
+                            <td>{{ row.headline }}</td>
+                            <td>{{ row.count }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="2">No headlines found matching criteria.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="results-panel">
+            <h3 style="color: var(--danger-color);">Error: {{ error }}</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Loading State Handler
+    const form = document.getElementById('analyzerForm');
+    const overlay = document.getElementById('loadingOverlay');
+    const fileInput = document.getElementById('csv_file');
+    const sheetSelect = document.getElementById('sheet_name');
+
+    if (form) {
+        form.addEventListener('submit', function () {
+            // Show loading overlay
+            overlay.style.display = 'flex';
+        });
+    }
+
+    // Hide loader if page is restored from cache (back button)
+    window.addEventListener('pageshow', function (event) {
+        overlay.style.display = 'none';
+    });
+
+    // Dynamic Sheet Fetching
+    if (fileInput && sheetSelect) {
+        fileInput.addEventListener('change', async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Clear existing options and show loading state
+            sheetSelect.innerHTML = '<option value="">Loading sheets...</option>';
+            sheetSelect.disabled = true;
+
+            // Check if it's an Excel file
+            const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+
+            if (!isExcel) {
+                // For CSV files, sheet selection is irrelevant
+                sheetSelect.innerHTML = '<option value="">N/A (CSV file)</option>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/get_sheets', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                sheetSelect.innerHTML = ''; // clear loading text
+
+                if (data.sheets && data.sheets.length > 0) {
+                    data.sheets.forEach(sheet => {
+                        const option = document.createElement('option');
+                        option.value = sheet;
+                        option.textContent = sheet;
+                        sheetSelect.appendChild(option);
+                    });
+                    sheetSelect.disabled = false;
+                } else {
+                    sheetSelect.innerHTML = '<option value="">No sheets found</option>';
+                }
+
+            } catch (error) {
+                console.error("Error fetching sheets:", error);
+                sheetSelect.innerHTML = '<option value="">Error loading sheets. Defaulting to first sheet.</option>';
+                sheetSelect.disabled = false;
+            }
+        });
+    }
+
+    // Export Table to CSV
+    function downloadCSV(csv, filename) {
+        let csvFile;
+        let downloadLink;
+
+        // CSV file
+        csvFile = new Blob([csv], { type: "text/csv" });
+
+        // Download link
+        downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+
+    function exportTableToCSV(filename) {
+        let csv = [];
+        let rows = document.querySelectorAll(".table-wrapper table tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+
+            for (let j = 0; j < cols.length; j++)
+                // Escape quotes and commas in strings
+                row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
+
+            csv.push(row.join(","));
+        }
+
+        // Download CSV file
+        downloadCSV(csv.join("\n"), filename);
+    }
+</script>
+{% endblock %}

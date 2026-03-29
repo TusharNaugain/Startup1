@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='excel_style.css') }}">
+
+<!-- Blobs can be placed relative to the main content or absolute in the background. 
+     Since base.html wraps content in main-content, we might want to ensure blobs are contained or visible. 
+     Let's put them inside glass-panel or just behind it. -->
+
+<div class="glass-panel"
+    style="position: relative; overflow: hidden; min-height: 80vh; display: flex; flex-direction: column; justify-content: center;">
+
+    <!-- Background Blobs (Scoped to this panel or page) -->
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div style="position: relative; z-index: 2; text-align: center;">
+        <header style="margin-bottom: 40px;">
+            <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Excel Automater <span class="badge">Pro</span></h1>
+            <p style="color: rgba(255,255,255,0.7);">Generate your daily report with 100% accuracy.</p>
+        </header>
+
+        <form action="{{ url_for('process_excel') }}" method="POST" enctype="multipart/form-data" id="uploadForm"
+            style="max-width: 500px; margin: 0 auto;">
+
+            <div class="drop-zone" id="drop-zone-raw">
+                <span class="icon">📄</span>
+                <label>Raw Data File</label>
+                <input type="file" name="raw_file" id="raw_file" required accept=".xlsx,.csv">
+                <p class="file-name" id="raw_name">Drag & drop or click to upload</p>
+            </div>
+
+            <div class="drop-zone" id="drop-zone-cust">
+                <span class="icon">👥</span>
+                <label>Customer List</label>
+                <input type="file" name="customer_file" id="customer_file" required accept=".xlsx,.csv">
+                <p class="file-name" id="cust_name">Drag & drop or click to upload</p>
+            </div>
+
+            <button type="submit" class="btn-generate">
+                <span class="btn-text">Generate Report</span>
+                <div class="loader" id="loader"></div>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Simple File Name Update & Drag Drop Visuals
+    const inputs = ['raw', 'cust'];
+
+    inputs.forEach(type => {
+        const input = document.getElementById(type + '_file');
+        const nameDisplay = document.getElementById(type + '_name');
+        const zone = document.getElementById('drop-zone-' + type);
+
+        input.addEventListener('change', () => {
+            if (input.files.length > 0) {
+                nameDisplay.textContent = input.files[0].name;
+                zone.classList.add('active');
+            }
+        });
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', function () {
+        const btn = document.querySelector('.btn-generate');
+        btn.classList.add('loading');
+        // btn.querySelector('.btn-text').textContent = 'Processing...'; 
+        // Logic handled by CSS visibility but let's keep it clean
+    });
+</script>
+{% endblock %}

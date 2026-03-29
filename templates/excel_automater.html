@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='excel_style.css') }}">
+
+<div class="ea-page">
+
+    <!-- Animated background blobs -->
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="ea-center">
+
+        <!-- ── Header ─────────────────────────────────────────────────── -->
+        <header class="ea-header">
+            <h1>Excel Automater <span class="badge">Pro</span></h1>
+            <p>Upload your files once — generate your report, send it by email, or save as PDF.</p>
+        </header>
+
+        <!-- ── Unified Card ───────────────────────────────────────────── -->
+        <div class="ea-card">
+
+            <!-- Section: Data Files -->
+            <div class="ea-section-label">📁 Data Files</div>
+            <div class="ea-grid-2">
+                <div class="drop-zone" id="dz-raw">
+                    <span class="icon">📄</span>
+                    <label>Raw Data File</label>
+                    <input type="file" id="raw_file" accept=".xlsx,.csv">
+                    <p class="file-name" id="raw_name">Drag &amp; drop or click to upload</p>
+                </div>
+                <div class="drop-zone" id="dz-cust">
+                    <span class="icon">👥</span>
+                    <label>Customer List</label>
+                    <input type="file" id="customer_file" accept=".xlsx,.csv">
+                    <p class="file-name" id="cust_name">Drag &amp; drop or click to upload</p>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="ea-divider"></div>
+
+            <!-- Section: Email Credentials & Recipients -->
+            <div class="ea-section-label">🔐 Credentials &amp; Recipients <span class="ea-optional-tag">— needed only
+                    for Send &amp; Preview</span></div>
+
+            <div class="ea-field" style="margin-bottom: 12px;">
+                <label for="sender_password">Gmail App Password
+                    <span class="email-optional" id="pwdGenerateLink"> — <a
+                            href="https://myaccount.google.com/apppasswords" target="_blank"
+                            style="color:#a29bfe;text-decoration:none;">Generate here ↗</a></span>
+                </label>
+                <input type="password" id="sender_password" placeholder="xxxx xxxx xxxx xxxx" class="email-input">
+                <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                    <input type="checkbox" id="rememberPassword"
+                        style="width:16px;height:16px;cursor:pointer;accent-color:#a29bfe;">
+                    <label for="rememberPassword"
+                        style="font-size:0.8rem;color:rgba(255,255,255,0.6);cursor:pointer;margin:0;font-weight:400;">Remember
+                        on this device</label>
+                    <button type="button" id="clearPwdBtn" onclick="clearSavedPassword()"
+                        style="display:none;margin-left:auto;background:none;border:none;color:#ff6b6b;font-size:0.75rem;cursor:pointer;padding:0;">✕
+                        Forget</button>
+                </div>
+                <span class="email-hint">Sending from: naugaintushar@gmail.com</span>
+            </div>
+
+            <div class="ea-grid-2">
+                <div class="ea-field">
+                    <label for="lead_recipients">Lead Report To</label>
+                    <input type="text" id="lead_recipients" placeholder="a@x.com, b@x.com" class="email-input">
+                    <span class="email-hint">Comma-separated. Leave blank to skip.</span>
+                </div>
+                <div class="ea-field">
+                    <label for="customer_recipients">Customer Report To</label>
+                    <input type="text" id="customer_recipients" placeholder="c@x.com, d@x.com" class="email-input">
+                    <span class="email-hint">Comma-separated. Leave blank to skip.</span>
+                </div>
+            </div>
+
+            <!-- ── Action Buttons ──────────────────────────────────────── -->
+            <div class="ea-actions">
+
+                <!-- Generate Excel -->
+                <button type="button" id="generateBtn" class="ea-btn ea-btn--primary" onclick="generateExcel()">
+                    <span class="ea-btn-icon">📊</span>
+                    <span class="ea-btn-label">Generate Excel</span>
+                    <div class="ea-btn-loader hidden" id="genLoader"></div>
+                </button>
+
+                <!-- Save as PDF -->
+                <button type="button" id="pdfBtn" class="ea-btn ea-btn--secondary" onclick="saveAsPdf()">
+                    <span class="ea-btn-icon">💾</span>
+                    <span class="ea-btn-label">Save as PDF</span>
+                    <div class="ea-btn-loader hidden" id="pdfLoader"></div>
+                </button>
+
+                <!-- Preview Email -->
+                <button type="button" id="previewBtn" class="ea-btn ea-btn--ghost" onclick="previewEmail()">
+                    <span class="ea-btn-icon">👁️</span>
+                    <span class="ea-btn-label">Preview Email</span>
+                    <div class="ea-btn-loader hidden" id="previewLoader"></div>
+                </button>
+
+                <!-- Forward Email -->
+                <button type="button" id="sendEmailBtn" class="ea-btn ea-btn--teal" onclick="sendEmail()">
+                    <span class="ea-btn-icon">📤</span>
+                    <span id="sendBtnText" class="ea-btn-label">Forward Email</span>
+                    <div class="ea-btn-loader hidden" id="emailLoader"></div>
+                </button>
+
+            </div>
+
+            <!-- Status -->
+            <div id="emailStatus" class="email-status hidden"></div>
+
+        </div><!-- /ea-card -->
+
+    </div><!-- /ea-center -->
+</div><!-- /ea-page -->
+
+<script>
+    // ── Password persistence (localStorage) ──────────────────────────────
+    const PWD_KEY = 'liberty_gmail_app_pwd';
+
+    function loadSavedPassword() {
+        const saved = localStorage.getItem(PWD_KEY);
+        const pwdInput = document.getElementById('sender_password');
+        const rememberBox = document.getElementById('rememberPassword');
+        const clearBtn = document.getElementById('clearPwdBtn');
+        const generateLink = document.getElementById('pwdGenerateLink');
+        if (saved) {
+            pwdInput.value = saved;
+            rememberBox.checked = true;
+            clearBtn.style.display = 'inline';
+            if (generateLink) generateLink.style.display = 'none';
+        }
+    }
+
+    function savePasswordIfRemembered() {
+        const pwd = document.getElementById('sender_password').value.trim();
+        const remember = document.getElementById('rememberPassword').checked;
+        const clearBtn = document.getElementById('clearPwdBtn');
+        if (remember && pwd) {
+            localStorage.setItem(PWD_KEY, pwd);
+            clearBtn.style.display = 'inline';
+        } else if (!remember) {
+            localStorage.removeItem(PWD_KEY);
+            clearBtn.style.display = 'none';
+        }
+    }
+
+    function clearSavedPassword() {
+        localStorage.removeItem(PWD_KEY);
+        document.getElementById('sender_password').value = '';
+        document.getElementById('rememberPassword').checked = false;
+        document.getElementById('clearPwdBtn').style.display = 'none';
+        const generateLink = document.getElementById('pwdGenerateLink');
+        if (generateLink) generateLink.style.display = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSavedPassword);
+
+    // ── File drop-zone label updates ──────────────────────────────────────
+    [{ inputId: 'raw_file', nameId: 'raw_name', zoneId: 'dz-raw' },
+    { inputId: 'customer_file', nameId: 'cust_name', zoneId: 'dz-cust' }]
+        .forEach(({ inputId, nameId, zoneId }) => {
+            const input = document.getElementById(inputId);
+            const nameEl = document.getElementById(nameId);
+            const zone = document.getElementById(zoneId);
+            if (!input || !nameEl || !zone) return;
+            input.addEventListener('change', () => {
+                if (input.files.length > 0) {
+                    nameEl.textContent = '✅ ' + input.files[0].name;
+                    zone.classList.add('active');
+                }
+            });
+        });
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function getFiles() {
+        return {
+            raw: document.getElementById('raw_file').files[0],
+            cust: document.getElementById('customer_file').files[0],
+        };
+    }
+
+    function setLoading(btnId, loaderId, loading) {
+        const btn = document.getElementById(btnId);
+        const loader = document.getElementById(loaderId);
+        if (loading) {
+            btn.disabled = true;
+            btn.querySelector('.ea-btn-label').style.opacity = '0';
+            loader.classList.remove('hidden');
+        } else {
+            btn.disabled = false;
+            btn.querySelector('.ea-btn-label').style.opacity = '1';
+            loader.classList.add('hidden');
+        }
+    }
+
+    // ── Generate Excel (download) ─────────────────────────────────────────
+    async function generateExcel() {
+        const { raw, cust } = getFiles();
+        if (!raw || !cust) { showStatus('error', '⚠️ Upload both files first.'); return; }
+        setLoading('generateBtn', 'genLoader', true);
+        hideStatus();
+
+        try {
+            const fd = new FormData();
+            fd.append('raw_file', raw);
+            fd.append('customer_file', cust);
+
+            const res = await fetch('/process_excel', { method: 'POST', body: fd });
+            if (res.ok) {
+                const blob = await res.blob();
+                const cd = res.headers.get('Content-Disposition') || '';
+                const match = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                const filename = match ? match[1].replace(/['"]/g, '') : 'report.xlsx';
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('success', '✅ Excel report downloaded successfully!');
+            } else {
+                const text = await res.text();
+                showStatus('error', '❌ ' + text);
+            }
+        } catch (err) { showStatus('error', '❌ Network error — ' + err.message); }
+        finally { setLoading('generateBtn', 'genLoader', false); }
+    }
+
+    // ── Save as PDF ───────────────────────────────────────────────────────
+    async function saveAsPdf() {
+        const { raw, cust } = getFiles();
+        if (!raw || !cust) { showStatus('error', '⚠️ Upload both files first.'); return; }
+        setLoading('pdfBtn', 'pdfLoader', true);
+        hideStatus();
+
+        try {
+            const fd = new FormData();
+            fd.append('raw_file', raw);
+            fd.append('customer_file', cust);
+
+            const res = await fetch('/process_excel_pdf', { method: 'POST', body: fd });
+            if (res.ok) {
+                const blob = await res.blob();
+                const cd = res.headers.get('Content-Disposition') || '';
+                const match = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                const filename = match ? match[1].replace(/['"]/g, '') : 'report.pdf';
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('success', '✅ PDF report downloaded successfully!');
+            } else {
+                const text = await res.text();
+                showStatus('error', '❌ ' + text);
+            }
+        } catch (err) { showStatus('error', '❌ Network error — ' + err.message); }
+        finally { setLoading('pdfBtn', 'pdfLoader', false); }
+    }
+
+    // ── Preview Email ─────────────────────────────────────────────────────
+    async function previewEmail() {
+        const { raw, cust } = getFiles();
+        if (!raw || !cust) { showStatus('error', '⚠️ Upload both files first.'); return; }
+
+        setLoading('previewBtn', 'previewLoader', true);
+        hideStatus();
+
+        const leadRec = document.getElementById('lead_recipients').value.trim();
+        const custRec = document.getElementById('customer_recipients').value.trim();
+        const pwd = document.getElementById('sender_password').value.trim();
+
+        // Open a single new window with two iframes side by side
+        const w = window.open('', '_blank');
+        w.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>Email Previews</title></head>
+            <body style="margin:0; padding:0; display:flex; height: 100vh; overflow:hidden; font-family:sans-serif;">
+                <div style="flex:1; border-right: 2px solid #ccc; display:flex; flex-direction:column;">
+                    <iframe id="ifLead" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column;">
+                    <iframe id="ifCust" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+            </body>
+            </html>
+        `);
+        w.document.close();
+
+        for (const sheet_type of ['Lead', 'Customer']) {
+            const currentRaw = document.getElementById('raw_file').files[0];
+            const currentCust = document.getElementById('customer_file').files[0];
+
+            const fd = new FormData();
+            fd.append('raw_file', currentRaw);
+            fd.append('customer_file', currentCust);
+            fd.append('sheet_type', sheet_type);
+            fd.append('lead_recipients', leadRec);
+            fd.append('customer_recipients', custRec);
+            fd.append('sheet_link', '');
+            if (pwd) fd.append('sender_password', pwd);
+
+            savePasswordIfRemembered();
+            try {
+                const res = await fetch('/preview_email', { method: 'POST', body: fd });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const iframeId = sheet_type === 'Lead' ? 'ifLead' : 'ifCust';
+                    const iframe = w.document.getElementById(iframeId);
+                    iframe.src = url;
+                } else {
+                    const d = await res.json();
+                    showStatus('error', '❌ Preview failed for ' + sheet_type + ': ' + (d.error || res.statusText));
+                }
+            } catch (err) { showStatus('error', '❌ Network error on ' + sheet_type + ': ' + err.message); }
+        }
+
+        setLoading('previewBtn', 'previewLoader', false);
+        showStatus('success', '✅ Previews opened in a new tab (side-by-side).');
+    }
+
+    // ── Forward / Send Email ──────────────────────────────────────────────
+    async function sendEmail() {
+        const { raw, cust } = getFiles();
+        const password = document.getElementById('sender_password').value.trim();
+        const leadRec = document.getElementById('lead_recipients').value.trim();
+        const custRec = document.getElementById('customer_recipients').value.trim();
+
+        if (!raw || !cust) { showStatus('error', '⚠️ Upload both files first.'); return; }
+        if (!password) { showStatus('error', '⚠️ Gmail App Password is required to send.'); return; }
+        if (!leadRec && !custRec) { showStatus('error', '⚠️ Enter at least one recipient.'); return; }
+
+        savePasswordIfRemembered();
+        setLoading('sendEmailBtn', 'emailLoader', true);
+        document.getElementById('sendBtnText').textContent = 'Sending…';
+        hideStatus();
+
+        try {
+            const fd = new FormData();
+            fd.append('raw_file', raw);
+            fd.append('customer_file', cust);
+            fd.append('sender_password', password);
+            fd.append('lead_recipients', leadRec);
+            fd.append('customer_recipients', custRec);
+
+            const res = await fetch('/send_email', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok || res.status === 207) {
+                const lm = data.lead_sent ? '✅ Lead sent' : '⏭️ Lead skipped';
+                const cm = data.customer_sent ? '✅ Customer sent' : '⏭️ Customer skipped';
+                const em = data.errors?.length ? '<br><span style="color:#ff6b6b">Errors: ' + data.errors.join(' | ') + '</span>' : '';
+                showStatus(data.errors?.length ? 'warn' : 'success', lm + ' &nbsp;|&nbsp; ' + cm + em);
+            } else {
+                showStatus('error', '❌ ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) { showStatus('error', '❌ Network error — ' + err.message); }
+        finally {
+            setLoading('sendEmailBtn', 'emailLoader', false);
+            document.getElementById('sendBtnText').textContent = 'Forward Email';
+        }
+    }
+
+    function showStatus(type, html) {
+        const el = document.getElementById('emailStatus');
+        el.className = 'email-status ' + type;
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function hideStatus() {
+        document.getElementById('emailStatus').classList.add('hidden');
+    }
+</script>
+{% endblock %}

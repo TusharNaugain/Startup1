@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+/* Loading Overlay */
+.loading-overlay {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0, 0, 0, 0.7);
+backdrop-filter: blur(5px);
+display: none;
+justify-content: center;
+align-items: center;
+z-index: 1000;
+flex-direction: column;
+}
+
+.loader {
+border: 5px solid var(--bg-secondary);
+border-top: 5px solid var(--accent-color);
+border-radius: 50%;
+width: 50px;
+height: 50px;
+animation: spin 1s linear infinite;
+margin-bottom: 20px;
+}
+
+.loading-text {
+color: white;
+font-size: 1.2rem;
+font-weight: 500;
+letter-spacing: 1px;
+}
+
+@keyframes spin {
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
+}
+</style>
+
+{% block content %}
+<!-- Loading Screen -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loader"></div>
+    <div class="loading-text">Processing Headlines...</div>
+    <div style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9rem;">This may take a few seconds</div>
+</div>
+
+<div class="analytics-container">
+    <div class="glass-panel">
+        <header>
+            <div class="logo">
+                <h1>Smart <span>Classifier</span></h1>
+            </div>
+            <p class="subtitle">Categorize headlines into 7 Automotive Industry buckets instantly.</p>
+        </header>
+
+        <form action="{{ url_for('process_classification') }}" method="post" enctype="multipart/form-data"
+            id="mainForm">
+
+            <div class="form-group">
+                <label for="industry_select">Select Industry / Organization</label>
+                <select id="industry_select" name="industry" required
+                    style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+                    <option value="Automotive">Automotive & Mobility</option>
+                    <option value="BFSI">BFSI (Banking, Fintech, Insurance)</option>
+                    <option value="Education & EdTech">Education & EdTech</option>
+                    <option value="IT, Software & Telecom">IT, Software & Telecom</option>
+                    <option value="Manufacturing, Power & Mining">Manufacturing, Power & Mining</option>
+                    <option value="Consumer & Retail">Consumer & Retail (FMCG)</option>
+                    <option value="NGO & Development Sector">NGO & Development Sector</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="file">Upload File (CSV or Excel)</label>
+                <input type="file" id="file" name="file" accept=".csv, .xlsx, .xls" required>
+                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    For best results, upload an Excel file with separate sheets named after the buckets (e.g., "Market
+                    Entry", "Product Launch").
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="headline_col">Headline Column Name (Optional)</label>
+                <input type="text" id="headline_col" name="headline_col" placeholder="Default: 'headline' or 'title'">
+                <small style="color: var(--text-secondary);">If your column has a different name, specify it
+                    here.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="sheet_name">Sheet Name (Optional)</label>
+                <input type="text" id="sheet_name" name="sheet_name" placeholder="e.g. Sheet1">
+                <small style="color: var(--text-secondary);">For Excel files only.</small>
+            </div>
+
+            <div class="action-bar">
+                <button type="submit" id="classifyBtn">
+                    <i class="fa-solid fa-bolt"></i> Run Analysis
+                </button>
+            </div>
+        </form>
+
+        <!-- Buckets display moved to dynamic tooltip or hidden for cleanliness as they change per industry -->
+        <div style="margin-top: 15px; font-size: 0.85rem; color: var(--text-secondary); text-align: center;">
+            <p><i class="fa-solid fa-circle-info"></i> The engine will automatically apply relevant keywords for the
+                selected industry.</p>
+        </div>
+
+        <!-- Results Panel (Always present in DOM, handled by JS) -->
+        <div id="resultsPanel" class="results-panel" style="display: none;">
+            <div class="results-header">
+                <h3><i class="fa-solid fa-check-circle" style="color: var(--success-color);"></i> Classification
+                    Complete!</h3>
+                <span class="status-badge status-relevant" id="matchCountBadge">0 Unique Matches Found</span>
+            </div>
+
+            <!-- Bucket Stats Summary -->
+            <div id="bucketStatsPanel" style="margin-bottom: 20px; display: none;">
+                <h4>Distribution by Bucket (Top 10 shown below)</h4>
+                <ul id="bucketStatsList"
+                    style="list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+                    <!-- JS will populate -->
+                </ul>
+            </div>
+
+            <div style="margin-bottom: 20px; text-align: center;">
+                <a id="downloadLink" href="#" style="text-decoration: none;">
+                    <button type="button" style="margin: 0 auto; background: var(--success-color);">
+                        <i class="fa-solid fa-download"></i> Download Full Report
+                    </button>
+                </a>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Headline</th>
+                            <th>Assigned Bucket</th>
+                            <th>Duplicacy Count</th>
+                            <th>Matched Keywords</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="paginationControls"
+                style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px;">
+                <button onclick="changePage(-1)" id="prevBtn"
+                    style="padding: 5px 15px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); cursor: pointer; border-radius: 4px;">&laquo;
+                    Previous</button>
+                <span id="pageIndicator" style="color: var(--text-primary);">Page 1</span>
+                <button onclick="changePage(1)" id="nextBtn"
+                    style="padding: 5px 15px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); cursor: pointer; border-radius: 4px;">Next
+                    &raquo;</button>
+            </div>
+
+            <div id="truncationMsg"
+                style="text-align: center; padding: 10px; color: var(--text-secondary); display: none;">
+                <em>Displaying Top 200 matches. Download the full report to see all.</em>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="results-panel">
+            <h3 style="color: var(--danger-color);">Error: {{ error }}</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // --- Server Data Injection ---
+    const serverMatches = {{ matches | default (None) | tojson }};
+    const serverTotal = {{ total_matches | default (0) }};
+    const serverFile = "{{ result_file }}";
+    const serverStats = {{ bucket_stats | default ({}) | tojson }};
+    const headlineCol = "{{ headline_col | default('headline') }}";
+    const industryConfig = {{ industry_config | default ({}) | tojson }};
+
+    // --- Pagination State ---
+    let currentPage = 1;
+    const rowsPerPage = 10;
+    let allRowsData = []; // Store data objects
+
+    function init() {
+        // 1. Check if we have FRESH server data (POST request)
+        if (serverMatches) {
+            console.log("New server data received.");
+            const state = {
+                matches: serverMatches,
+                total: serverTotal,
+                file: serverFile,
+                headlineCol: headlineCol,
+                bucketStats: serverStats,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem('classifierState', JSON.stringify(state));
+            renderResults(state);
+        } else {
+            // 2. No fresh data (GET request). Check navigation type.
+            const navEntries = performance.getEntriesByType("navigation");
+            const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
+
+            if (isReload) {
+                console.log("Page reload detected. Clearing state.");
+                sessionStorage.removeItem('classifierState');
+            } else {
+                // 3. Try to restore from Session Storage
+                const saved = sessionStorage.getItem('classifierState');
+                if (saved) {
+                    console.log("Restoring session state.");
+                    try {
+                        const parsed = JSON.parse(saved);
+                        renderResults(parsed);
+                    } catch (e) {
+                        console.error("Failed to parse saved state", e);
+                    }
+                }
+            }
+        }
+    }
+
+    function renderResults(state) {
+        const panel = document.getElementById('resultsPanel');
+        const tbody = document.getElementById('resultsBody');
+        const badge = document.getElementById('matchCountBadge');
+        const dlLink = document.getElementById('downloadLink');
+        const truncMsg = document.getElementById('truncationMsg');
+
+        // Update Globals
+        allRowsData = state.matches;
+
+        // Update Metadata
+        badge.innerText = `${state.total} Matches Found`;
+        dlLink.href = `/download/${state.file}`;
+        if (state.total > 200) {
+            truncMsg.style.display = 'block';
+            truncMsg.innerHTML = `<em>Displaying Top 200 matches. Download the full report to see all ${state.total}.</em>`;
+        } else {
+            truncMsg.style.display = 'none';
+        }
+
+        // Render Bucket Stats
+        const statsPanel = document.getElementById('bucketStatsPanel');
+        const statsList = document.getElementById('bucketStatsList');
+        if (state.bucketStats && Object.keys(state.bucketStats).length > 0) {
+            statsList.innerHTML = '';
+            for (const [bucket, count] of Object.entries(state.bucketStats)) {
+                const li = document.createElement('li');
+                li.style.cssText = "background: var(--bg-secondary); padding: 5px 10px; border-radius: 4px; font-size: 0.85rem; border: 1px solid var(--border-color);";
+                li.innerHTML = `<strong>${bucket}:</strong> ${count}`;
+                statsList.appendChild(li);
+            }
+            statsPanel.style.display = 'block';
+        } else {
+            statsPanel.style.display = 'none';
+        }
+
+        // Render First Page
+        displayPage(1); // This function will now read from allRowsData
+
+        // Show Panel
+        panel.style.display = 'block';
+    }
+
+    function displayPage(page) {
+        const tbody = document.getElementById('resultsBody');
+        tbody.innerHTML = '';
+
+        const totalPages = Math.ceil(allRowsData.length / rowsPerPage);
+
+        // Safety check
+        if (page < 1) page = 1;
+        if (totalPages > 0 && page > totalPages) page = totalPages;
+
+        currentPage = page;
+
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageItems = allRowsData.slice(start, end);
+
+        // Use saved headlineCol or default 'headline'
+        // We need to access the property dynamically
+        // Note: Saved state includes 'headlineCol'
+        // But if we are restoring, we need to access that. 
+        // Let's use 'headlineCol' from scope if available, or just check keys.
+        // Actually, let's just use the injection variable 'headlineCol' if strictly needed, 
+        // but 'serverMatches' might rely on 'headlineCol' which is also saved.
+        // Simplified: Use the property that holds the headline. 
+        // In app.py, to_dict('records') keeps original column names.
+
+        // Get the effective headline key:
+        // Try to find a key that looks like headline if default doesn't work?
+        // Let's stick to the mapped 'headlineCol'.
+
+        // RE-READ headlineCol from local scope or state
+        const hCol = (typeof state !== 'undefined' && state.headlineCol) ? state.headlineCol : headlineCol;
+
+        pageItems.forEach(row => {
+            const tr = document.createElement('tr');
+            // Fallback for headline if column name mismatch
+            const hl = row[hCol] || row['headline'] || row['Title'] || Object.values(row)[0];
+
+            tr.innerHTML = `
+                <td>${hl}</td>
+                <td><span class="status-badge">${row.assigned_bucket}</span></td>
+                <td style="text-align: center; font-weight: bold;">${row.duplicacy_count || 1}</td>
+                <td>${row.matched_keywords}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Update Controls
+        const ind = document.getElementById('pageIndicator');
+        const prev = document.getElementById('prevBtn');
+        const next = document.getElementById('nextBtn');
+
+        if (ind) ind.innerText = `Page ${currentPage} of ${totalPages || 1}`;
+        if (prev) {
+            prev.disabled = currentPage === 1;
+            prev.style.opacity = currentPage === 1 ? '0.5' : '1';
+        }
+        if (next) {
+            next.disabled = currentPage === totalPages || totalPages === 0;
+            next.style.opacity = (currentPage === totalPages || totalPages === 0) ? '0.5' : '1';
+        }
+    }
+
+    function changePage(direction) {
+        displayPage(currentPage + direction);
+    }
+
+    // Loading State Handler
+    const form = document.getElementById('mainForm');
+    const overlay = document.getElementById('loadingOverlay');
+
+    if (form) {
+        form.addEventListener('submit', function () {
+            // Show loading overlay
+            overlay.style.display = 'flex';
+        });
+    }
+
+    // Hide loader if page is restored from cache (back button)
+    window.addEventListener('pageshow', function (event) {
+        overlay.style.display = 'none';
+    });
+
+
+    // Run Init
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+{% endblock %}
