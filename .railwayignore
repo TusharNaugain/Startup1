@@ -1,0 +1,29 @@
+# ── Local data dirs (never needed in prod) ──────────────────────────────────
+input_data/
+output_data/
+results/
+payment_screenshots/
+uploads/
+
+# ── Dev / OS junk ────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.venv/
+venv/
+env/
+
+# ── Secrets (set via Railway env vars instead) ───────────────────────────────
+.env
+.env.*
+!.env.example
+firebase_credentials.json
+
+# ── Docs / scripts not needed at runtime ────────────────────────────────────
+*.md
+!README.md
+START_GUIDE.txt
+SOP.md
+link_checker.py
+news_extractor.py

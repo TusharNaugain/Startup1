@@ -1,38 +1,33 @@
-beautifulsoup4
-blinker
-python-dotenv
-certifi
-charset-normalizer
-click
+# ── Core Flask ───────────────────────────────────────────────────────────────
 Flask==3.1.2
-idna
-importlib_metadata
-itsdangerous
+Werkzeug==3.1.5
 Jinja2
 MarkupSafe
-requests
-soupsieve
-typing_extensions
-urllib3
-zipp
-feedparser
-duckduckgo-search
-python-dateutil
-googlenewsdecoder==0.1.7
-pandas
-openpyxl
-scikit-learn
-cloudscraper
-tqdm
+click
+blinker
+itsdangerous
 
-# Auth & security
+# ── Auth & security ──────────────────────────────────────────────────────────
 Flask-Login==0.6.3
 Flask-WTF==1.2.1
 Flask-Limiter==3.8.0
 Flask-Mail==0.10.0
 email-validator==2.2.0
-Werkzeug==3.1.5
-gunicorn==23.0.0
 
-# Firebase
+# ── HTTP / utilities ─────────────────────────────────────────────────────────
+requests
+python-dotenv
+certifi
+charset-normalizer
+idna
+urllib3
+typing_extensions
+python-dateutil
+beautifulsoup4
+soupsieve
+
+# ── Firebase ─────────────────────────────────────────────────────────────────
 firebase-admin==7.4.0
+
+# ── Production server ────────────────────────────────────────────────────────
+gunicorn==23.0.0
