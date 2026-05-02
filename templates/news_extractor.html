@@ -2,278 +2,348 @@
 
 {% block content %}
 <style>
-    /* ─── Tag Input ─── */
-    .tag-input-wrapper {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 8px 10px;
-        background: rgba(0, 0, 0, 0.25);
+    .news-panel { max-width: 1100px; }
+
+    /* ── Hero header ── */
+    .news-hero {
+        background: linear-gradient(135deg, rgba(0,210,255,0.08) 0%, rgba(124,58,237,0.08) 100%);
         border: 1px solid var(--glass-border);
-        border-radius: 10px;
-        min-height: 44px;
+        border-radius: 14px;
+        padding: 22px 26px;
+        margin-bottom: 24px;
+        display: flex;
         align-items: center;
-        cursor: text;
+        gap: 18px;
+    }
+    .news-hero-icon {
+        width: 52px; height: 52px;
+        background: linear-gradient(135deg, var(--accent-color), #7c3aed);
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; color: #fff; flex-shrink: 0;
+    }
+    .news-hero h1 { margin: 0; font-size: 1.5rem; }
+    .news-hero p  { margin: 4px 0 0; color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* ── Card sections ── */
+    .config-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin-bottom: 16px;
+    }
+    .card-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .card-label i { color: var(--accent-color); }
+
+    /* ── Tag input ── */
+    .tag-input-wrapper {
+        display: flex; flex-wrap: wrap; gap: 6px;
+        padding: 8px 10px;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px; min-height: 46px;
+        align-items: center; cursor: text;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
     .tag-input-wrapper:focus-within {
         border-color: var(--accent-color);
-        box-shadow: 0 0 8px rgba(0, 210, 255, 0.2);
+        box-shadow: 0 0 10px rgba(0,210,255,0.15);
     }
     .tag-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 3px 10px 3px 12px;
-        background: rgba(0, 210, 255, 0.15);
-        border: 1px solid rgba(0, 210, 255, 0.35);
-        border-radius: 20px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--accent-color);
-        white-space: nowrap;
-        animation: popIn 0.15s ease;
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px 4px 12px;
+        background: rgba(0,210,255,0.12);
+        border: 1px solid rgba(0,210,255,0.3);
+        border-radius: 20px; font-size: 0.79rem;
+        font-weight: 600; color: var(--accent-color);
+        white-space: nowrap; animation: popIn 0.15s ease;
     }
     @keyframes popIn {
-        from { transform: scale(0.85); opacity: 0; }
-        to   { transform: scale(1);    opacity: 1; }
+        from { transform: scale(0.8); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
     }
     .tag-chip-remove {
-        background: none;
-        border: none;
-        color: var(--accent-color);
-        cursor: pointer;
-        font-size: 0.7rem;
-        padding: 0;
-        line-height: 1;
-        opacity: 0.7;
-        transition: opacity 0.15s;
+        background: none; border: none;
+        color: var(--accent-color); cursor: pointer;
+        font-size: 0.68rem; padding: 0; line-height: 1;
+        opacity: 0.6; transition: opacity 0.15s;
     }
     .tag-chip-remove:hover { opacity: 1; }
     .tag-real-input {
-        flex: 1;
-        min-width: 120px;
-        background: none;
-        border: none;
-        outline: none;
-        color: var(--text-primary);
-        font-size: 0.83rem;
-        font-family: 'Outfit', sans-serif;
-        padding: 2px 4px;
+        flex: 1; min-width: 120px;
+        background: none; border: none; outline: none;
+        color: var(--text-primary); font-size: 0.84rem;
+        font-family: 'Outfit', sans-serif; padding: 2px 4px;
     }
-    .tag-real-input::placeholder { color: var(--text-secondary); opacity: 0.7; }
+    .tag-real-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
 
-    /* ─── CSV Upload Zone ─── */
+    /* ── CSV drop zone ── */
     .kw-csv-zone {
         border: 2px dashed var(--glass-border);
-        border-radius: 10px;
-        padding: 16px 20px;
-        text-align: center;
-        cursor: pointer;
+        border-radius: 10px; padding: 14px 20px;
+        text-align: center; cursor: pointer;
         transition: border-color 0.2s, background 0.2s;
-        background: rgba(0,0,0,0.1);
-        margin-top: 10px;
+        background: rgba(0,0,0,0.08); margin-top: 10px;
+        display: flex; align-items: center; justify-content: center; gap: 10px;
     }
     .kw-csv-zone:hover, .kw-csv-zone.drag-over {
         border-color: var(--accent-color);
-        background: rgba(0, 210, 255, 0.04);
+        background: rgba(0,210,255,0.04);
     }
-    .kw-csv-zone p { margin: 6px 0 0; color: var(--text-secondary); font-size: 0.8rem; }
+    .kw-csv-zone span { color: var(--text-secondary); font-size: 0.82rem; }
 
-    /* ─── Progress bar ─── */
-    .news-progress-bar-wrap {
-        width: 100%;
-        height: 5px;
-        background: rgba(255,255,255,0.08);
-        border-radius: 4px;
-        overflow: hidden;
-        margin-top: 10px;
-    }
-    .news-progress-bar {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, var(--accent-color), #7c3aed);
-        border-radius: 4px;
-        transition: width 0.3s ease;
-    }
-
-    /* ─── Summary badge row ─── */
-    .news-summary-row {
-        display: flex;
+    /* ── Options row ── */
+    .options-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 14px;
-        flex-wrap: wrap;
+    }
+    @media (max-width: 700px) { .options-grid { grid-template-columns: 1fr; } }
+
+    .opt-label {
+        font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-secondary); margin-bottom: 6px; display: block;
+    }
+
+    /* ── Fetch button ── */
+    .fetch-btn-wrap {
+        display: flex; align-items: center; gap: 16px;
+        padding: 6px 0;
+    }
+    #fetchNewsBtn {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 28px; font-size: 0.93rem;
+        background: linear-gradient(135deg, var(--accent-color), #0099cc);
+        border: none; border-radius: 12px; color: #000;
+        font-weight: 700; cursor: pointer;
+        transition: opacity 0.2s, transform 0.15s;
+        box-shadow: 0 4px 16px rgba(0,210,255,0.3);
+    }
+    #fetchNewsBtn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    #fetchNewsBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Progress ── */
+    .progress-wrap {
+        flex: 1; display: none;
+    }
+    .progress-label {
+        font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 5px;
+    }
+    .progress-bar-bg {
+        height: 5px; background: rgba(255,255,255,0.07);
+        border-radius: 4px; overflow: hidden;
+    }
+    .progress-bar-fill {
+        height: 100%; width: 0%;
+        background: linear-gradient(90deg, var(--accent-color), #7c3aed);
+        border-radius: 4px; transition: width 0.3s ease;
+    }
+
+    /* ── Results panel ── */
+    .results-meta {
+        display: flex; justify-content: space-between;
+        align-items: center; flex-wrap: wrap; gap: 12px;
         margin-bottom: 14px;
     }
-    .news-summary-badge {
-        padding: 5px 14px;
-        border-radius: 20px;
-        font-size: 0.78rem;
-        font-weight: 700;
+    .results-meta h3 { margin: 0; font-size: 1rem; }
+    .count-badge {
+        display: inline-block; padding: 2px 10px;
+        background: rgba(0,210,255,0.15);
+        border: 1px solid rgba(0,210,255,0.3);
+        border-radius: 20px; font-size: 0.78rem;
+        font-weight: 700; color: var(--accent-color);
+        margin-left: 8px;
     }
-    .nsb-total  { background: rgba(0,210,255,0.12); color: var(--accent-color); border: 1px solid rgba(0,210,255,0.3); }
-    .nsb-kw     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+    .kw-summary-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .kw-badge-item {
+        padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;
+        font-weight: 600; background: rgba(124,58,237,0.15);
+        color: #a78bfa; border: 1px solid rgba(124,58,237,0.3);
+    }
 
-    /* ─── Keyword column in results table ─── */
-    .kw-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        background: rgba(124,58,237,0.15);
-        color: #a78bfa;
+    /* ── Filter bar ── */
+    .filter-bar {
+        display: flex; gap: 10px; flex-wrap: wrap;
+        align-items: center; margin-bottom: 14px;
+        padding: 12px 16px;
+        background: rgba(0,0,0,0.15);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+    }
+    .filter-bar .mf-input { max-width: 240px; }
+
+    /* ── News table ── */
+    #newsTable { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 0.83rem; }
+    #newsTable thead th {
+        padding: 8px 12px; font-size: 0.69rem;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-secondary); font-weight: 600;
+        border-bottom: 1px solid var(--glass-border); text-align: left;
+    }
+    #newsTable tbody tr { background: rgba(255,255,255,0.025); transition: background 0.15s; }
+    #newsTable tbody tr:hover { background: rgba(0,210,255,0.05); }
+    #newsTable tbody td { padding: 10px 12px; vertical-align: middle; }
+    #newsTable tbody td:first-child { border-radius: 8px 0 0 8px; }
+    #newsTable tbody td:last-child  { border-radius: 0 8px 8px 0; }
+    .kw-chip {
+        display: inline-block; padding: 2px 8px; border-radius: 10px;
+        font-size: 0.71rem; font-weight: 600;
+        background: rgba(124,58,237,0.15); color: #a78bfa;
         border: 1px solid rgba(124,58,237,0.3);
     }
+    .open-link {
+        color: var(--accent-color); font-size: 0.8rem;
+        text-decoration: none; font-weight: 600;
+        transition: opacity 0.15s;
+    }
+    .open-link:hover { opacity: 0.7; }
 </style>
 
-<div class="glass-panel">
-    <header class="page-header">
-        <div class="header-content">
-            <h1>Google News <span>Extractor</span></h1>
-            <p class="subtitle">Multi-keyword RSS + Web Intelligence</p>
+<div class="analytics-container">
+<div class="glass-panel news-panel">
+
+    <!-- Hero -->
+    <div class="news-hero">
+        <div class="news-hero-icon"><i class="fa-solid fa-rss"></i></div>
+        <div>
+            <h1>News <span>Extractor</span></h1>
+            <p>Multi-keyword RSS + Google Web Intelligence — fetch and export news articles in bulk.</p>
         </div>
-    </header>
+    </div>
 
-    <!-- Input Section -->
-    <section class="input-panel">
-
-        <!-- ── Keywords Tag Input ── -->
-        <div class="form-group" style="margin-bottom: 16px;">
-            <label>
-                <i class="fa-solid fa-tags"></i>
-                Keywords / Topics
-                <span style="color:var(--text-secondary);font-size:0.75rem;font-weight:400;margin-left:6px;">
-                    — Type a keyword and press <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;">Enter</kbd> or <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;">,</kbd> to add. Each keyword is searched separately.
-                </span>
-            </label>
-            <div class="tag-input-wrapper" id="keywordTagBox" onclick="document.getElementById('keywordRawInput').focus()">
-                <!-- chips inserted here by JS -->
-                <input type="text" id="keywordRawInput" class="tag-real-input"
-                       placeholder="e.g. PRADAN, Tata Trust …">
-            </div>
+    <!-- Keywords Card -->
+    <div class="config-card">
+        <div class="card-label"><i class="fa-solid fa-tags"></i> Keywords / Topics
+            <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-secondary); font-size:0.71rem; margin-left:4px;">
+                — press <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-size:0.75rem;">Enter</kbd> or <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-size:0.75rem;">,</kbd> after each
+            </span>
+        </div>
+        <div class="tag-input-wrapper" id="keywordTagBox" onclick="document.getElementById('keywordRawInput').focus()">
+            <input type="text" id="keywordRawInput" class="tag-real-input" placeholder="e.g. PRADAN, Tata Trust, CSR India …">
         </div>
 
-        <!-- ── OR: Upload CSV of keywords ── -->
-        <div class="form-group" style="margin-bottom: 18px;">
-            <label><i class="fa-solid fa-file-csv"></i> Or upload a CSV of keywords</label>
-            <div class="kw-csv-zone" id="kwCsvZone"
-                 onclick="document.getElementById('kwCsvInput').click()"
-                 ondragover="event.preventDefault();this.classList.add('drag-over')"
-                 ondragleave="this.classList.remove('drag-over')"
-                 ondrop="handleKwCsvDrop(event)">
-                <i class="fa-solid fa-file-csv" style="font-size:1.5rem;color:var(--accent-color);"></i>
-                <p id="kwCsvLabel">Click to browse or drag &amp; drop a CSV (one keyword per row, first column used)</p>
-            </div>
-            <input type="file" id="kwCsvInput" accept=".csv" style="display:none" onchange="onKwCsvSelect(this)">
+        <!-- CSV drop -->
+        <div class="kw-csv-zone" id="kwCsvZone"
+             onclick="document.getElementById('kwCsvInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleKwCsvDrop(event)">
+            <i class="fa-solid fa-file-csv" style="color:var(--accent-color); font-size:1.2rem;"></i>
+            <span id="kwCsvLabel">Or drag &amp; drop a CSV file (one keyword per row)</span>
         </div>
+        <input type="file" id="kwCsvInput" accept=".csv" style="display:none" onchange="onKwCsvSelect(this)">
+    </div>
 
-        <!-- Country + dates row -->
-        <div class="form-row" style="display: flex; gap: 20px;">
-            <div class="form-group" style="flex: 1;">
-                <label for="newsCountry"><i class="fa-solid fa-earth-americas"></i> Target Country</label>
-                <select id="newsCountry" class="mf-input">
+    <!-- Options Card -->
+    <div class="config-card">
+        <div class="card-label"><i class="fa-solid fa-sliders"></i> Options</div>
+        <div class="options-grid">
+            <div>
+                <span class="opt-label"><i class="fa-solid fa-earth-americas"></i> Country</span>
+                <select id="newsCountry" class="mf-input" style="width:100%;">
                     <option value="IN" selected>India (IN)</option>
                     <option value="US">United States (US)</option>
                     <option value="GB">United Kingdom (GB)</option>
-                    <option value="AE">United Arab Emirates (UAE)</option>
+                    <option value="AE">UAE (AE)</option>
                     <option value="SG">Singapore (SG)</option>
                     <option value="AU">Australia (AU)</option>
                     <option value="CA">Canada (CA)</option>
                     <option value="ZA">South Africa (ZA)</option>
                 </select>
             </div>
-            <div class="form-group" style="flex: 1;">
-                <label for="startDate"><i class="fa-solid fa-calendar"></i> Start Date (After)</label>
-                <input type="date" id="startDate">
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label for="endDate"><i class="fa-solid fa-calendar"></i> End Date (Before)</label>
-                <input type="date" id="endDate">
-            </div>
-        </div>
-
-        <div class="action-bar">
-            <button id="fetchNewsBtn" onclick="fetchNews()">
-                <span class="btn-text">Fetch All Articles</span>
-                <i class="fa-solid fa-cloud-arrow-down"></i>
-            </button>
-            <div id="newsLoader" class="loader hidden"></div>
-            <span id="newsStatusText" style="color:var(--text-secondary);font-size:0.85rem;display:none;"></span>
-        </div>
-
-        <!-- Progress bar (shown during multi-keyword fetch) -->
-        <div id="newsProgressWrap" class="news-progress-bar-wrap" style="display:none;">
-            <div class="news-progress-bar" id="newsProgressBar"></div>
-        </div>
-    </section>
-
-    <!-- Results Section -->
-    <section id="newsResultsPanel" class="results-panel hidden">
-        <div class="results-header">
             <div>
-                <h2>Found Articles <span id="articleCount" class="badge">0</span></h2>
-                <div class="news-summary-row" id="newsSummaryRow"></div>
+                <span class="opt-label"><i class="fa-solid fa-calendar-day"></i> Start Date (After)</span>
+                <input type="date" id="startDate" class="mf-input" style="width:100%;">
+            </div>
+            <div>
+                <span class="opt-label"><i class="fa-solid fa-calendar-check"></i> End Date (Before)</span>
+                <input type="date" id="endDate" class="mf-input" style="width:100%;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Fetch Button -->
+    <div class="fetch-btn-wrap">
+        <button id="fetchNewsBtn" onclick="fetchNews()">
+            <i class="fa-solid fa-cloud-arrow-down"></i> Fetch Articles
+        </button>
+        <div class="progress-wrap" id="progressWrapOuter">
+            <div class="progress-label" id="newsStatusText"></div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="newsProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <section id="newsResultsPanel" class="hidden" style="margin-top:28px;">
+        <div class="results-meta">
+            <div>
+                <h3><i class="fa-solid fa-newspaper" style="color:var(--accent-color);"></i>
+                    Results <span class="count-badge" id="articleCount">0</span>
+                </h3>
+                <div class="kw-summary-row" id="newsSummaryRow"></div>
             </div>
             <button class="secondary-btn" onclick="downloadNewsCSV()">
                 <i class="fa-solid fa-download"></i> Export CSV
             </button>
         </div>
 
-        <!-- Filter bar -->
-        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <input type="text" id="newsSearchFilter" class="mf-input" placeholder="🔍 Filter results…"
-                   style="max-width:260px;" oninput="applyNewsFilter()">
-            <select id="newsKwFilter" class="mf-input" style="max-width:220px;" onchange="applyNewsFilter()">
+        <div class="filter-bar">
+            <input type="text" id="newsSearchFilter" class="mf-input"
+                   placeholder="🔍 Search title / source…" oninput="applyNewsFilter()">
+            <select id="newsKwFilter" class="mf-input" onchange="applyNewsFilter()">
                 <option value="">All Keywords</option>
             </select>
         </div>
 
-        <div class="table-wrapper">
+        <div style="overflow-x:auto; border-radius:12px; border:1px solid var(--glass-border); padding:4px 8px 8px; background:rgba(0,0,0,0.12);">
             <table id="newsTable">
                 <thead>
                     <tr>
                         <th>Date</th>
                         <th>Keyword</th>
                         <th>Source</th>
-                        <th>Title</th>
+                        <th style="min-width:260px;">Title</th>
                         <th>Link</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- JS will populate this -->
-                </tbody>
+                <tbody></tbody>
             </table>
         </div>
     </section>
+
+</div>
 </div>
 
 <script>
-// ─── State ───
-let globalNewsResults   = [];
-let newsKeywords        = [];  // array of keyword strings
+let globalNewsResults = [];
+let newsKeywords = [];
 
-// ─── Tag-input helpers ───
-
+/* ── Tag input ── */
 function addNewsKeyword(kw) {
     kw = kw.trim();
-    if (!kw) return;
-    // avoid duplicate (case-insensitive)
-    if (newsKeywords.some(k => k.toLowerCase() === kw.toLowerCase())) return;
+    if (!kw || newsKeywords.some(k => k.toLowerCase() === kw.toLowerCase())) return;
     newsKeywords.push(kw);
     renderKeywordChips();
 }
-
-function removeNewsKeyword(idx) {
-    newsKeywords.splice(idx, 1);
-    renderKeywordChips();
-}
-
+function removeNewsKeyword(idx) { newsKeywords.splice(idx, 1); renderKeywordChips(); }
 function renderKeywordChips() {
     const box = document.getElementById('keywordTagBox');
     const input = document.getElementById('keywordRawInput');
-    // Remove existing chips
     box.querySelectorAll('.tag-chip').forEach(c => c.remove());
-    // Re-insert chips before the input
     newsKeywords.forEach((kw, i) => {
         const chip = document.createElement('span');
         chip.className = 'tag-chip';
@@ -281,8 +351,6 @@ function renderKeywordChips() {
         box.insertBefore(chip, input);
     });
 }
-
-// Key events on the raw input
 document.getElementById('keywordRawInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
@@ -293,8 +361,6 @@ document.getElementById('keywordRawInput').addEventListener('keydown', function(
         removeNewsKeyword(newsKeywords.length - 1);
     }
 });
-
-// Also handle paste: split by comma/newline
 document.getElementById('keywordRawInput').addEventListener('paste', function(e) {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text');
@@ -302,260 +368,197 @@ document.getElementById('keywordRawInput').addEventListener('paste', function(e)
     this.value = '';
 });
 
-// ─── CSV keyword upload ───
+/* ── CSV ── */
 function handleKwCsvDrop(e) {
     e.preventDefault();
     document.getElementById('kwCsvZone').classList.remove('drag-over');
     const f = e.dataTransfer.files[0];
     if (f) loadKwCsvFile(f);
 }
-
-function onKwCsvSelect(input) {
-    if (input.files && input.files[0]) loadKwCsvFile(input.files[0]);
-}
-
+function onKwCsvSelect(input) { if (input.files && input.files[0]) loadKwCsvFile(input.files[0]); }
 function parseCsvFirstColumn(text) {
-    // Strip BOM if present
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-
     const lines = text.split(/\r?\n/);
-    if (!lines.length) return [];
-
-    // Auto-detect delimiter from first non-empty line
     const firstLine = lines.find(l => l.trim()) || '';
     let delim = ',';
-    if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) delim = ';';
-    else if ((firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length) delim = '\t';
-
+    if ((firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length) delim = ';';
     const results = [];
     lines.forEach((line, idx) => {
         if (!line.trim()) return;
-
-        // Proper CSV field parser for quoted fields
-        const fields = [];
-        let cur = '', inQuote = false;
+        const fields = []; let cur = '', inQ = false;
         for (let i = 0; i < line.length; i++) {
             const ch = line[i];
-            if (inQuote) {
-                if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-                else if (ch === '"') { inQuote = false; }
-                else { cur += ch; }
-            } else {
-                if (ch === '"') { inQuote = true; }
-                else if (ch === delim) { fields.push(cur); cur = ''; }
-                else { cur += ch; }
-            }
+            if (inQ) { if (ch==='"'&&line[i+1]==='"'){cur+='"';i++;} else if(ch==='"'){inQ=false;} else{cur+=ch;} }
+            else { if(ch==='"'){inQ=true;} else if(ch===delim){fields.push(cur);cur='';} else{cur+=ch;} }
         }
         fields.push(cur);
-
-        const kw = (fields[0] || '').trim();
+        const kw = (fields[0]||'').trim();
         if (!kw) return;
-        // Skip header row
-        if (idx === 0 && /keyword|topic|name|search|term|query/i.test(kw)) return;
+        if (idx===0 && /keyword|topic|name|search|term|query/i.test(kw)) return;
         results.push(kw);
     });
     return results;
 }
-
 function loadKwCsvFile(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
         const keywords = parseCsvFirstColumn(e.target.result);
         let added = 0;
         keywords.forEach(kw => { addNewsKeyword(kw); added++; });
-        document.getElementById('kwCsvLabel').textContent = `✅ ${file.name} — loaded ${added} keyword${added !== 1 ? 's' : ''}`;
+        document.getElementById('kwCsvLabel').textContent = `✅ ${file.name} — ${added} keyword${added!==1?'s':''} loaded`;
     };
     reader.readAsText(file);
 }
 
-// ─── Main fetch (multi-keyword) ───
+/* ── Main fetch ── */
 async function fetchNews() {
-    // Flush any partial typed text
     const rawInput = document.getElementById('keywordRawInput');
-    if (rawInput.value.trim()) {
-        addNewsKeyword(rawInput.value.trim());
-        rawInput.value = '';
-    }
+    if (rawInput.value.trim()) { addNewsKeyword(rawInput.value.trim()); rawInput.value = ''; }
+    if (!newsKeywords.length) { alert('Please add at least one keyword/topic.'); return; }
 
-    if (!newsKeywords.length) {
-        alert('Please add at least one keyword/topic first.');
-        return;
-    }
+    const country   = document.getElementById('newsCountry').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate   = document.getElementById('endDate').value;
+    const btn       = document.getElementById('fetchNewsBtn');
+    const status    = document.getElementById('newsStatusText');
+    const progWrap  = document.getElementById('progressWrapOuter');
+    const progBar   = document.getElementById('newsProgressBar');
+    const panel     = document.getElementById('newsResultsPanel');
+    const tbody     = document.querySelector('#newsTable tbody');
+    const countBadge= document.getElementById('articleCount');
 
-    const country    = document.getElementById('newsCountry').value;
-    const startDate  = document.getElementById('startDate').value;
-    const endDate    = document.getElementById('endDate').value;
-    const loader     = document.getElementById('newsLoader');
-    const btn        = document.getElementById('fetchNewsBtn');
-    const statusText = document.getElementById('newsStatusText');
-    const resultsPanel = document.getElementById('newsResultsPanel');
-    const progressWrap = document.getElementById('newsProgressWrap');
-    const progressBar  = document.getElementById('newsProgressBar');
-    const tableBody  = document.querySelector('#newsTable tbody');
-    const countBadge = document.getElementById('articleCount');
-
-    // Reset UI
-    loader.classList.remove('hidden');
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = `<span style="width:16px;height:16px;border:2.5px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;"></span> Fetching…`;
     btn.disabled = true;
-    resultsPanel.classList.add('hidden');
-    tableBody.innerHTML = '';
+    panel.classList.add('hidden');
+    tbody.innerHTML = '';
     globalNewsResults = [];
-    statusText.style.display = 'inline';
-    progressWrap.style.display = newsKeywords.length > 1 ? 'block' : 'none';
-    progressBar.style.width = '0%';
+    progWrap.style.display = 'flex';
+    progBar.style.width = '0%';
+    status.textContent = 'Starting…';
 
     const total = newsKeywords.length;
     const allArticles = [];
-    const seenLinks   = new Set();
+    const seenLinks = new Set();
 
     for (let i = 0; i < total; i++) {
         const kw = newsKeywords[i];
-        statusText.textContent = `Fetching "${kw}" … (${i + 1}/${total})`;
-        progressBar.style.width = `${Math.round(((i) / total) * 100)}%`;
+        status.textContent = `Fetching "${kw}" … (${i+1}/${total})`;
+        progBar.style.width = `${Math.round((i/total)*100)}%`;
 
         try {
             const resp = await fetch('/api/fetch_news', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic: kw, country, start_date: startDate || null, end_date: endDate || null })
+                body: JSON.stringify({ topic: kw, country, start_date: startDate||null, end_date: endDate||null })
             });
-
             if (resp.status === 402) {
-                if (typeof showPaywallModal === 'function') {
-                    showPaywallModal();
-                } else {
-                    alert('Out of tokens. Please upgrade your plan.');
-                }
-                statusText.textContent = 'Action stopped (Out of tokens).';
-                progressBarContainer.style.display = 'none';
+                if (typeof showPaywallModal === 'function') showPaywallModal();
+                else alert('Out of tokens. Please upgrade your plan.');
+                status.textContent = 'Stopped — out of tokens.';
                 break;
             }
-
             const data = await resp.json();
-            if (data.error) {
-                console.warn(`Error for keyword "${kw}":`, data.error);
-                continue;
-            }
-            (data.articles || []).forEach(art => {
-                const normURL = (art.Link || '').toLowerCase().replace(/\/$/, '');
-                if (!normURL || seenLinks.has(normURL)) return;
-                seenLinks.add(normURL);
+            if (data.error) { console.warn(`Error for "${kw}":`, data.error); continue; }
+            (data.articles||[]).forEach(art => {
+                const norm = (art.Link||'').toLowerCase().replace(/\/$/,'');
+                if (!norm || seenLinks.has(norm)) return;
+                seenLinks.add(norm);
                 allArticles.push({ ...art, _keyword: kw });
             });
-        } catch (err) {
-            console.error(`Fetch error for "${kw}":`, err);
-        }
+        } catch(err) { console.error(`Fetch error for "${kw}":`, err); }
     }
 
-    progressBar.style.width = '100%';
-
-    // Sort newest first (articles without dates go to bottom)
-    allArticles.sort((a, b) => {
+    progBar.style.width = '100%';
+    allArticles.sort((a,b) => {
         const da = a.Published ? new Date(a.Published) : new Date(0);
         const db = b.Published ? new Date(b.Published) : new Date(0);
         return db - da;
     });
-
     globalNewsResults = allArticles;
-    countBadge.innerText = globalNewsResults.length;
-
-    // Populate keyword filter dropdown
+    countBadge.textContent = globalNewsResults.length;
     buildKwFilterDropdown();
     renderNewsTable(globalNewsResults);
     renderNewsSummary();
-    resultsPanel.classList.remove('hidden');
-    statusText.textContent = `✓ Done! ${globalNewsResults.length} unique article(s) across ${total} keyword(s).`;
-
-    loader.classList.add('hidden');
+    panel.classList.remove('hidden');
+    status.textContent = `✓ Done — ${globalNewsResults.length} unique article(s) across ${total} keyword(s).`;
+    btn.innerHTML = origHTML;
     btn.disabled = false;
-    setTimeout(() => { progressWrap.style.display = 'none'; }, 1200);
+    setTimeout(() => { progWrap.style.display = 'none'; }, 1500);
 }
 
-// ─── Keyword filter dropdown ───
+/* ── Helpers ── */
 function buildKwFilterDropdown() {
     const sel = document.getElementById('newsKwFilter');
     sel.innerHTML = '<option value="">All Keywords</option>';
-    const uniqueKws = [...new Set(globalNewsResults.map(a => a._keyword))].filter(Boolean);
-    uniqueKws.forEach(kw => {
+    [...new Set(globalNewsResults.map(a=>a._keyword))].filter(Boolean).forEach(kw => {
         const opt = document.createElement('option');
         opt.value = kw;
-        opt.textContent = `${kw} (${globalNewsResults.filter(a => a._keyword === kw).length})`;
+        opt.textContent = `${kw} (${globalNewsResults.filter(a=>a._keyword===kw).length})`;
         sel.appendChild(opt);
     });
 }
-
-// ─── Summary badges ───
 function renderNewsSummary() {
     const row = document.getElementById('newsSummaryRow');
     const kwCounts = {};
-    globalNewsResults.forEach(a => { kwCounts[a._keyword] = (kwCounts[a._keyword] || 0) + 1; });
-    row.innerHTML = Object.entries(kwCounts).map(([kw, cnt]) =>
-        `<span class="news-summary-badge nsb-kw"><i class="fa-solid fa-tag" style="margin-right:4px;font-size:0.7rem;"></i>${escHtml(kw)}: ${cnt}</span>`
+    globalNewsResults.forEach(a => { kwCounts[a._keyword] = (kwCounts[a._keyword]||0)+1; });
+    row.innerHTML = Object.entries(kwCounts).map(([kw,cnt]) =>
+        `<span class="kw-badge-item"><i class="fa-solid fa-tag" style="font-size:0.65rem;margin-right:3px;"></i>${escHtml(kw)}: ${cnt}</span>`
     ).join('');
 }
-
-// ─── Filter ───
 function applyNewsFilter() {
     const text   = document.getElementById('newsSearchFilter').value.toLowerCase();
     const kwFilt = document.getElementById('newsKwFilter').value;
     const filtered = globalNewsResults.filter(a => {
         const matchKw   = !kwFilt || a._keyword === kwFilt;
-        const matchText = !text  || (a.Title || '').toLowerCase().includes(text) || (a.Source || '').toLowerCase().includes(text);
+        const matchText = !text || (a.Title||'').toLowerCase().includes(text) || (a.Source||'').toLowerCase().includes(text);
         return matchKw && matchText;
     });
     renderNewsTable(filtered);
-    document.getElementById('articleCount').innerText = filtered.length;
+    document.getElementById('articleCount').textContent = filtered.length;
 }
-
-// ─── Table render ───
 function renderNewsTable(articles) {
-    const tableBody = document.querySelector('#newsTable tbody');
-    tableBody.innerHTML = '';
+    const tbody = document.querySelector('#newsTable tbody');
+    tbody.innerHTML = '';
     if (!articles.length) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);">No results found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px;">No results found.</td></tr>';
         return;
     }
+    const frag = document.createDocumentFragment();
     articles.forEach(row => {
         const tr = document.createElement('tr');
-        let dateStr = '';
-        try { dateStr = row.Published ? new Date(row.Published).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—'; } catch(e) { dateStr = row.Published || '—'; }
+        let dateStr = '—';
+        try { dateStr = row.Published ? new Date(row.Published).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'; } catch(e) {}
         tr.innerHTML = `
-            <td style="white-space:nowrap;font-size:0.82rem;">${dateStr}</td>
-            <td><span class="kw-badge">${escHtml(row._keyword || '—')}</span></td>
-            <td style="font-size:0.82rem;">${escHtml(row.Source)}</td>
-            <td>${escHtml(row.Title)}</td>
-            <td class="url-cell"><a href="${row.Link}" target="_blank" rel="noopener">Open ↗</a></td>
+            <td style="white-space:nowrap;font-size:0.8rem;color:var(--text-secondary);">${dateStr}</td>
+            <td><span class="kw-chip">${escHtml(row._keyword||'—')}</span></td>
+            <td style="font-size:0.8rem;">${escHtml(row.Source||'—')}</td>
+            <td style="font-size:0.83rem;line-height:1.4;">${escHtml(row.Title||'—')}</td>
+            <td><a href="${row.Link}" target="_blank" rel="noopener" class="open-link">Open ↗</a></td>
         `;
-        tableBody.appendChild(tr);
+        frag.appendChild(tr);
     });
+    tbody.appendChild(frag);
 }
-
-// ─── CSV export ───
 function downloadNewsCSV() {
     if (!globalNewsResults.length) return;
     let csv = 'Published Date,Keyword,Source,Title,URL\n';
     globalNewsResults.forEach(row => {
-        const title = (row.Title || '').replace(/"/g, '""');
-        const src   = (row.Source || '').replace(/"/g, '""');
-        const kw    = (row._keyword || '').replace(/"/g, '""');
+        const title = (row.Title||'').replace(/"/g,'""');
+        const src   = (row.Source||'').replace(/"/g,'""');
+        const kw    = (row._keyword||'').replace(/"/g,'""');
         csv += `"${row.Published}","${kw}","${src}","${title}","${row.Link}"\n`;
     });
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type:'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'news_report.csv';
     link.click();
 }
-
-// ─── Helper ───
 function escHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-// ─── Seed with a default keyword on load ───
-document.addEventListener('DOMContentLoaded', () => {
-    addNewsKeyword('PRADAN');
-});
+document.addEventListener('DOMContentLoaded', () => { addNewsKeyword('PRADAN'); });
 </script>
 {% endblock %}
