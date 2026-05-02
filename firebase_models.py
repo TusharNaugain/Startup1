@@ -98,10 +98,11 @@ def update_user_tokens(email: str, new_tokens: int, new_plan: str = None):
 
 
 def get_all_users():
-    docs = _db().collection('users').order_by(
-        'created_at', direction=firestore.Query.DESCENDING
-    ).stream()
-    return [FirebaseUser(d.to_dict()) for d in docs]
+    docs = _db().collection('users').stream()
+    users = [FirebaseUser(d.to_dict()) for d in docs]
+    # Sort by created_at descending in Python — no index needed
+    users.sort(key=lambda u: u.created_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return users
 
 
 def get_user_count():
@@ -176,10 +177,11 @@ def create_payment(user_email, plan, amount, txn_id, screenshot_path=None):
 
 
 def get_pending_payments():
-    docs = _db().collection('payments').where(
-        'status', '==', 'pending'
-    ).order_by('created_at').stream()
-    return [d.to_dict() for d in docs]
+    """Fetch all pending payments sorted by created_at ascending — no index needed."""
+    docs = _db().collection('payments').stream()
+    results = [d.to_dict() for d in docs if d.to_dict().get('status') == 'pending']
+    results.sort(key=lambda p: p.get('created_at') or datetime.min.replace(tzinfo=timezone.utc))
+    return results
 
 
 def get_recent_payments(limit=20):
@@ -198,10 +200,11 @@ def get_recent_payments(limit=20):
 
 
 def get_payments_for_user(user_email):
-    docs = _db().collection('payments').where(
-        'user_email', '==', user_email
-    ).order_by('created_at', direction=firestore.Query.DESCENDING).stream()
-    return [d.to_dict() for d in docs]
+    """Fetch payments for a specific user — no compound index needed."""
+    docs = _db().collection('payments').stream()
+    results = [d.to_dict() for d in docs if d.to_dict().get('user_email') == user_email]
+    results.sort(key=lambda p: p.get('created_at') or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return results
 
 
 def get_payment(payment_id):
@@ -262,10 +265,10 @@ def get_all_tickets(status_filter=None):
 
 
 def get_tickets_for_user(user_email: str):
-    docs = _db().collection('support_tickets').order_by(
-        'created_at', direction=firestore.Query.DESCENDING
-    ).stream()
-    return [d.to_dict() for d in docs if d.to_dict().get('user_email') == user_email]
+    docs = _db().collection('support_tickets').stream()
+    results = [d.to_dict() for d in docs if d.to_dict().get('user_email') == user_email]
+    results.sort(key=lambda t: t.get('created_at') or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return results
 
 
 def update_ticket(ticket_id: str, status: str, admin_reply: str = None):

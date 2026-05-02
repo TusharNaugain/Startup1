@@ -28,7 +28,7 @@ def index():
         # Notify admin by email
         _notify_admin_new_ticket(current_user.email, subject, message, ticket_id)
 
-        flash('✅ Your ticket has been submitted! We'll get back to you soon.', 'success')
+        flash("✅ Your ticket has been submitted! We'll get back to you soon.", 'success')
         return redirect(url_for('support.my_tickets'))
 
     return render_template('support/index.html')
