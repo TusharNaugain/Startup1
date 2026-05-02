@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+<style>
+    .admin-panel { max-width: 1100px; }
+
+    .admin-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .stat-card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        text-align: center;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent-color);
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
+    }
+
+    .admin-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-secondary);
+        margin: 24px 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-pending  { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .badge-approved { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+    .badge-rejected { background: rgba(255,107,107,0.15); color: var(--danger-color); border: 1px solid rgba(255,107,107,0.3); }
+
+    .admin-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 5px;
+        font-size: 0.84rem;
+    }
+
+    .admin-table thead th {
+        padding: 8px 12px;
+        font-size: 0.70rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--glass-border);
+        text-align: left;
+    }
+
+    .admin-table tbody tr {
+        background: rgba(255,255,255,0.03);
+        transition: background 0.15s;
+    }
+
+    .admin-table tbody tr:hover {
+        background: rgba(0,210,255,0.04);
+    }
+
+    .admin-table tbody td {
+        padding: 10px 12px;
+        color: var(--text-primary);
+        border-top: 1px solid transparent;
+        border-bottom: 1px solid transparent;
+        vertical-align: middle;
+    }
+
+    .admin-table tbody td:first-child { border-radius: 8px 0 0 8px; }
+    .admin-table tbody td:last-child  { border-radius: 0 8px 8px 0; }
+
+    .action-form { display: inline; }
+
+    .action-form input[type="text"] {
+        background: rgba(0,0,0,0.25);
+        border: 1px solid var(--glass-border);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.78rem;
+        padding: 4px 8px;
+        width: 140px;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .btn-approve {
+        background: rgba(52,211,153,0.15);
+        border: 1px solid rgba(52,211,153,0.4);
+        color: #34d399;
+        padding: 5px 12px;
+        border-radius: 7px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-approve:hover { background: rgba(52,211,153,0.3); }
+
+    .btn-reject {
+        background: rgba(255,107,107,0.1);
+        border: 1px solid rgba(255,107,107,0.3);
+        color: var(--danger-color);
+        padding: 5px 12px;
+        border-radius: 7px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-reject:hover { background: rgba(255,107,107,0.2); }
+
+    .screenshot-link {
+        color: var(--accent-color);
+        font-size: 0.78rem;
+        text-decoration: none;
+    }
+
+    .screenshot-link:hover { text-decoration: underline; }
+
+    .empty-state {
+        text-align: center;
+        color: var(--text-secondary);
+        font-style: italic;
+        padding: 24px 0;
+        font-size: 0.85rem;
+    }
+
+    .flash-msg {
+        padding: 10px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 0.88rem;
+    }
+
+    .flash-success { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); color: #34d399; }
+    .flash-info    { background: rgba(0,210,255,0.10);  border: 1px solid rgba(0,210,255,0.3);  color: var(--accent-color); }
+    .flash-error   { background: rgba(255,107,107,0.12);border: 1px solid rgba(255,107,107,0.3);color: var(--danger-color); }
+</style>
+
+{% block content %}
+<div class="analytics-container">
+    <div class="glass-panel admin-panel">
+        <header>
+            <div class="logo">
+                <h1>Admin <span>Dashboard</span></h1>
+            </div>
+            <p class="subtitle">Review payments, credit tokens, and manage users.</p>
+        </header>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, msg in messages %}
+            <div class="flash-msg flash-{{ category }}">
+                <i class="fa-solid fa-circle-info"></i> {{ msg }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Stats Row -->
+        <div class="admin-stats">
+            <div class="stat-card">
+                <div class="stat-value">{{ user_count }}</div>
+                <div class="stat-label"><i class="fa-solid fa-users"></i> Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ pending | length }}</div>
+                <div class="stat-label"><i class="fa-solid fa-clock"></i> Pending Payments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ usage_count }}</div>
+                <div class="stat-label"><i class="fa-solid fa-bolt"></i> Total Tool Uses</div>
+            </div>
+            <div class="stat-card" style="cursor:pointer;" onclick="window.location='{{ url_for('admin.users') }}'">
+                <div class="stat-value"><i class="fa-solid fa-arrow-right" style="font-size:1.4rem;"></i></div>
+                <div class="stat-label">Manage Users</div>
+            </div>
+        </div>
+
+        <!-- ── Pending Payments ── -->
+        <div class="admin-section-title">
+            <i class="fa-solid fa-clock" style="color:#fbbf24;"></i> Pending Payments
+            <span class="badge badge-pending">{{ pending | length }}</span>
+        </div>
+
+        {% if pending %}
+        <div style="overflow-x:auto; border-radius:12px; border:1px solid var(--glass-border); padding:4px 8px 8px; background:rgba(0,0,0,0.15);">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User</th>
+                        <th>Plan</th>
+                        <th>Amount (₹)</th>
+                        <th>Txn ID</th>
+                        <th>Screenshot</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in pending %}
+                <tr>
+                    <td style="color:var(--text-secondary);">{{ p.id }}</td>
+                    <td>{{ p.user.email if p.user else '—' }}</td>
+                    <td><span class="badge badge-pending">{{ p.plan }}</span></td>
+                    <td><strong>{{ p.amount }}</strong></td>
+                    <td style="font-size:0.78rem; font-family:monospace; color:var(--text-secondary);">{{ p.txn_id }}</td>
+                    <td>
+                        {% if p.screenshot_path %}
+                        <a href="{{ url_for('admin.screenshot', payment_id=p.id) }}" target="_blank" class="screenshot-link">
+                            <i class="fa-solid fa-image"></i> View
+                        </a>
+                        {% else %}
+                        <span style="color:var(--text-secondary); font-size:0.78rem;">None</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.78rem; color:var(--text-secondary);">
+                        {{ p.created_at.strftime('%d %b %Y, %H:%M') if p.created_at else '—' }}
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <form class="action-form" method="POST" action="{{ url_for('admin.approve', payment_id=p.id) }}">
+                                <input type="text" name="note" placeholder="Note (optional)">
+                                <button type="submit" class="btn-approve">
+                                    <i class="fa-solid fa-check"></i> Approve
+                                </button>
+                            </form>
+                            <form class="action-form" method="POST" action="{{ url_for('admin.reject', payment_id=p.id) }}"
+                                  onsubmit="return confirm('Reject this payment?')">
+                                <input type="text" name="note" placeholder="Reason">
+                                <button type="submit" class="btn-reject">
+                                    <i class="fa-solid fa-times"></i> Reject
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fa-solid fa-check-circle" style="color:var(--success-color); font-size:1.5rem; display:block; margin-bottom:8px;"></i>
+            No pending payments — all clear!
+        </div>
+        {% endif %}
+
+        <!-- ── Recent Activity ── -->
+        <div class="admin-section-title" style="margin-top:32px;">
+            <i class="fa-solid fa-history" style="color:var(--accent-color);"></i> Recent Reviewed Payments
+        </div>
+
+        {% if recent %}
+        <div style="overflow-x:auto; border-radius:12px; border:1px solid var(--glass-border); padding:4px 8px 8px; background:rgba(0,0,0,0.15);">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User</th>
+                        <th>Plan</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                        <th>Admin Note</th>
+                        <th>Reviewed At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in recent %}
+                <tr>
+                    <td style="color:var(--text-secondary);">{{ p.id }}</td>
+                    <td>{{ p.user.email if p.user else '—' }}</td>
+                    <td>{{ p.plan }}</td>
+                    <td>{{ p.amount }}</td>
+                    <td>
+                        {% if p.status == 'approved' %}
+                            <span class="badge badge-approved"><i class="fa-solid fa-check"></i> Approved</span>
+                        {% else %}
+                            <span class="badge badge-rejected"><i class="fa-solid fa-times"></i> Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.78rem; color:var(--text-secondary);">{{ p.admin_note or '—' }}</td>
+                    <td style="font-size:0.78rem; color:var(--text-secondary);">
+                        {{ p.reviewed_at.strftime('%d %b %Y, %H:%M') if p.reviewed_at else '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">No reviewed payments yet.</div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

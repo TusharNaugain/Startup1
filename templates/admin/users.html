@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+<style>
+    .admin-panel { max-width: 1100px; }
+
+    .admin-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-secondary);
+        margin: 0 0 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-free      { background: rgba(255,255,255,0.08); color: var(--text-secondary); border: 1px solid var(--glass-border); }
+    .badge-starter   { background: rgba(0,210,255,0.12); color: var(--accent-color); border: 1px solid rgba(0,210,255,0.3); }
+    .badge-pro       { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
+    .badge-unlimited { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+    .badge-admin     { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+
+    .users-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 5px;
+        font-size: 0.84rem;
+    }
+
+    .users-table thead th {
+        padding: 8px 12px;
+        font-size: 0.70rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--glass-border);
+        text-align: left;
+    }
+
+    .users-table tbody tr {
+        background: rgba(255,255,255,0.03);
+        transition: background 0.15s;
+    }
+
+    .users-table tbody tr:hover {
+        background: rgba(0,210,255,0.04);
+    }
+
+    .users-table tbody td {
+        padding: 10px 12px;
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    .users-table tbody td:first-child { border-radius: 8px 0 0 8px; }
+    .users-table tbody td:last-child  { border-radius: 0 8px 8px 0; }
+
+    .token-bar-wrap {
+        background: rgba(255,255,255,0.06);
+        border-radius: 20px;
+        height: 6px;
+        width: 100px;
+        overflow: hidden;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 6px;
+    }
+
+    .token-bar-fill {
+        height: 100%;
+        border-radius: 20px;
+        background: linear-gradient(90deg, var(--accent-color), #00a8cc);
+    }
+</style>
+
+{% block content %}
+<div class="analytics-container">
+    <div class="glass-panel admin-panel">
+        <header style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+            <div>
+                <div class="logo">
+                    <h1>User <span>Management</span></h1>
+                </div>
+                <p class="subtitle">All registered users — {{ users | length }} total</p>
+            </div>
+            <a href="{{ url_for('admin.dashboard') }}" style="color:var(--accent-color); font-size:0.85rem; text-decoration:none; margin-top:8px;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </header>
+
+        <div class="admin-section-title">
+            <i class="fa-solid fa-users" style="color:var(--accent-color);"></i> All Users
+        </div>
+
+        {% if users %}
+        <div style="overflow-x:auto; border-radius:12px; border:1px solid var(--glass-border); padding:4px 8px 8px; background:rgba(0,0,0,0.15);">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Plan</th>
+                        <th>Tokens Remaining</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in users %}
+                <tr>
+                    <td style="color:var(--text-secondary);">{{ u.id }}</td>
+                    <td style="font-weight:600;">{{ u.email }}</td>
+                    <td>
+                        {% if u.is_admin %}
+                            <span class="badge badge-admin"><i class="fa-solid fa-shield-halved"></i> Admin</span>
+                        {% else %}
+                            <span style="color:var(--text-secondary); font-size:0.78rem;">User</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ u.plan }}">{{ u.plan }}</span>
+                    </td>
+                    <td>
+                        {% if u.plan == 'unlimited' %}
+                            <span style="color:#34d399;"><i class="fa-solid fa-infinity"></i> Unlimited</span>
+                        {% else %}
+                            <strong>{{ u.tokens_remaining }}</strong>
+                            <span class="token-bar-wrap">
+                                <span class="token-bar-fill" style="width: {{ [[(u.tokens_remaining or 0) / 250 * 100, 0] | max, 100] | min }}%;"></span>
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.78rem; color:var(--text-secondary);">
+                        {{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center; color:var(--text-secondary); font-style:italic; padding:32px 0; font-size:0.85rem;">
+            No users registered yet.
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
