@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # Load .env for local dev (no-op in production where env vars are set directly)
+
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from flask_login import login_required, current_user
 from link_checker import DataFetcher, DataProcessor, expand_keywords
@@ -41,9 +44,10 @@ app.config.update(
 app.config['ADMIN_EMAIL'] = os.environ.get('ADMIN_EMAIL', 'naugaintushar@gmail.com')
 
 # SMTP — used to email the admin when a payment is submitted
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_SERVER']  = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT']    = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['ADMIN_EMAIL'])
