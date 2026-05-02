@@ -52,10 +52,10 @@ class FirebaseUser(UserMixin):
 
     @property
     def has_unlimited(self):
-        return self.plan == 'unlimited'
+        return self.is_admin or self.plan == 'unlimited'
 
     def can_use_tool(self):
-        return self.has_unlimited or (self.tokens_remaining or 0) > 0
+        return self.is_admin or self.has_unlimited or (self.tokens_remaining or 0) > 0
 
     def consume_token(self):
         """In-memory decrement — caller must persist via update_user_tokens()."""
@@ -79,11 +79,12 @@ def get_firebase_user(email: str):
 
 def create_user(email: str, admin_email: str = '') -> FirebaseUser:
     """Create and return a new user document."""
+    is_admin = bool(admin_email and email.lower() == admin_email.lower())
     data = {
         'email':            email,
-        'plan':             'free',
-        'tokens_remaining': PLAN_TOKENS['free'],
-        'is_admin':         email.lower() == admin_email.lower() if admin_email else False,
+        'plan':             'unlimited' if is_admin else 'free',
+        'tokens_remaining': None if is_admin else PLAN_TOKENS['free'],
+        'is_admin':         is_admin,
         'created_at':       datetime.now(timezone.utc),
     }
     _db().collection('users').document(email).set(data)

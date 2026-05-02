@@ -27,25 +27,71 @@
             </div>
 
             <nav class="nav-links">
-                <a href="{{ url_for('home') }}" class="{% if request.path == '/' %}active{% endif %}">
-                    <i class="fa-solid fa-compass"></i>
-                    <span>Multi Find Relevant&amp;Irrelevant link</span>
-                </a>
-                <a href="{{ url_for('news_tool') }}" class="{% if request.path == '/news_tool' %}active{% endif %}">
-                    <i class="fa-solid fa-rss"></i>
-                    <span>News Extractor</span>
-                </a>
-                <a href="{{ url_for('headline_tool') }}"
-                    class="{% if request.path == '/headline_tool' %}active{% endif %}">
-                    <i class="fa-solid fa-chart-line"></i>
-                    <span>Headline Analyzer</span>
-                </a>
+                <!-- ── Multi Find ── -->
+                <div class="nav-item-wrap">
+                    <a href="{{ url_for('home') }}" class="{% if request.path == '/' %}active{% endif %}">
+                        <i class="fa-solid fa-compass"></i>
+                        <span>Multi Find</span>
+                        <button class="nav-info-btn" onclick="event.preventDefault();toggleNavInfo('infoMultiFind')" title="What is this?">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                    </a>
+                    <div class="nav-info-box" id="infoMultiFind">
+                        <strong>🔍 Multi Find — Link Relevance Checker</strong><br>
+                        Paste a list of website links + enter your brand keywords.<br>
+                        It visits each link and tells you: <em>is this article/page actually about your brand?</em><br>
+                        <b>Saves hours</b> of manually checking hundreds of URLs one by one.
+                    </div>
+                </div>
+
+                <!-- ── News Extractor ── -->
+                <div class="nav-item-wrap">
+                    <a href="{{ url_for('news_tool') }}" class="{% if request.path == '/news_tool' %}active{% endif %}">
+                        <i class="fa-solid fa-rss"></i>
+                        <span>News Extractor</span>
+                        <button class="nav-info-btn" onclick="event.preventDefault();toggleNavInfo('infoNews')" title="What is this?">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                    </a>
+                    <div class="nav-info-box" id="infoNews">
+                        <strong>📰 News Extractor</strong><br>
+                        Search for news articles by topic from Google News.<br>
+                        Filter by country and date range. Get clean, ready-to-use article links — no manual googling needed.
+                    </div>
+                </div>
+
+                <!-- ── Headline Analyzer ── -->
+                <div class="nav-item-wrap">
+                    <a href="{{ url_for('headline_tool') }}" class="{% if request.path == '/headline_tool' %}active{% endif %}">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Headline Analyzer</span>
+                        <button class="nav-info-btn" onclick="event.preventDefault();toggleNavInfo('infoHeadline')" title="What is this?">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                    </a>
+                    <div class="nav-info-box" id="infoHeadline">
+                        <strong>📊 Headline Analyzer</strong><br>
+                        Upload an Excel or CSV file with headlines.<br>
+                        It counts how often each headline appears and shows you the <b>top repeated headlines</b> — great for spotting trends and duplicate coverage.
+                    </div>
+                </div>
+
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('support.index') }}"
-                    class="{% if request.path.startswith('/support') %}active{% endif %}">
-                    <i class="fa-solid fa-headset"></i>
-                    <span>Help Desk</span>
-                </a>
+                <!-- ── Help Desk ── -->
+                <div class="nav-item-wrap">
+                    <a href="{{ url_for('support.index') }}" class="{% if request.path.startswith('/support') %}active{% endif %}">
+                        <i class="fa-solid fa-headset"></i>
+                        <span>Help Desk</span>
+                        <button class="nav-info-btn" onclick="event.preventDefault();toggleNavInfo('infoHelp')" title="What is this?">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                    </a>
+                    <div class="nav-info-box" id="infoHelp">
+                        <strong>🎧 Help Desk</strong><br>
+                        Got a problem or question? Submit a support ticket here.<br>
+                        The admin will reply directly and you'll get an email response.
+                    </div>
+                </div>
                 {% endif %}
             </nav>
 
@@ -96,15 +142,18 @@
                     <div class="user-profile-info">
                         <div class="user-name">{{ current_user.email }}</div>
                         <div class="user-tokens">
-                            {% if current_user.plan == 'unlimited' %}
+                            {% if current_user.is_admin or current_user.plan == 'unlimited' %}
                             <i class="fa-solid fa-infinity"></i> Unlimited
                             {% else %}
                             <i class="fa-solid fa-coins"></i> {{ current_user.tokens_remaining }} tokens
                             {% endif %}
                         </div>
-                        <a href="{{ url_for('auth.logout') }}" class="logout-link">
-                            <i class="fa-solid fa-right-from-bracket"></i> Logout
-                        </a>
+                        <form method="POST" action="{{ url_for('auth.logout') }}" style="margin:0;padding:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="logout-link" style="background:none;border:none;cursor:pointer;padding:0;font-family:inherit;font-size:inherit;">
+                                <i class="fa-solid fa-right-from-bracket"></i> Logout
+                            </button>
+                        </form>
                     </div>
                     {% else %}
                     <a href="{{ url_for('auth.login') }}" class="logout-link">
@@ -123,6 +172,21 @@
 
     {% include 'partials/paywall_modal.html' %}
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        function toggleNavInfo(id) {
+            const box = document.getElementById(id);
+            if (!box) return;
+            const isOpen = box.classList.contains('open');
+            // Close all open boxes first
+            document.querySelectorAll('.nav-info-box.open').forEach(b => b.classList.remove('open'));
+            if (!isOpen) box.classList.add('open');
+        }
+        // Close on outside click
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.nav-item-wrap')) {
+                document.querySelectorAll('.nav-info-box.open').forEach(b => b.classList.remove('open'));
+            }
+        });
+    </script>
 </body>
-
 </html>

@@ -961,3 +961,81 @@ button.add-row-btn:hover {
     box-shadow: none !important;
     transform: none !important;
 }
+
+/* ─── Nav Info Dropdowns ─── */
+.nav-item-wrap {
+    position: relative;
+}
+
+.nav-item-wrap > a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.88rem;
+}
+
+.nav-item-wrap > a:hover,
+.nav-item-wrap > a.active {
+    background: rgba(0, 210, 255, 0.1);
+    color: var(--accent-color);
+}
+
+.nav-info-btn {
+    margin-left: auto;
+    background: none !important;
+    border: none !important;
+    padding: 2px 4px !important;
+    color: var(--text-secondary);
+    font-size: 0.75rem !important;
+    cursor: pointer;
+    border-radius: 50% !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: unset !important;
+    box-shadow: none !important;
+    transform: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: opacity 0.2s, color 0.2s !important;
+    flex-shrink: 0;
+}
+
+.nav-info-btn:hover {
+    opacity: 1 !important;
+    color: var(--accent-color) !important;
+    box-shadow: none !important;
+    transform: none !important;
+    background: none !important;
+}
+
+.nav-info-box {
+    display: none;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 210, 255, 0.25);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 4px 0 6px;
+    animation: fadeIn 0.2s ease;
+}
+
+.nav-info-box.open {
+    display: block;
+}
+
+.nav-info-box strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 4px;
+}
