@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .pay-history { max-width: 900px; margin: 0 auto; padding: 30px 20px; }
+    .pay-table {
+        width: 100%; border-collapse: collapse; margin-top: 18px;
+        background: rgba(255, 255, 255, 0.02); border-radius: 10px; overflow: hidden;
+    }
+    .pay-table th, .pay-table td {
+        padding: 12px 14px; text-align: left; font-size: 13px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .pay-table th {
+        background: rgba(0, 0, 0, 0.3); color: var(--text-secondary);
+        font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px;
+    }
+    .badge {
+        display: inline-block; padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .b-pending { background: rgba(234, 179, 8, 0.15); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.3); }
+    .b-approved { background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .b-rejected { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .empty {
+        text-align: center; padding: 40px 20px; color: var(--text-secondary);
+        background: rgba(255, 255, 255, 0.02); border-radius: 10px;
+    }
+</style>
+
+<div class="pay-history">
+    <h1 style="margin:0 0 4px;">My payments</h1>
+    <p style="color:var(--text-secondary);margin:0 0 18px;">
+        All transactions you've submitted for review.
+    </p>
+
+    {% if payments %}
+    <table class="pay-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Plan</th>
+                <th>Amount</th>
+                <th>Transaction ID</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+                <td>{{ p.plan|capitalize }}</td>
+                <td>₹{{ p.amount }}</td>
+                <td style="font-family:ui-monospace,monospace;font-size:12px;">{{ p.txn_id }}</td>
+                <td><span class="badge b-{{ p.status }}">{{ p.status }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+        No payments yet.
+        <a href="{{ url_for('payment.plans') }}" style="color:var(--accent-color);">View plans</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

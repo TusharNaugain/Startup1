@@ -1,30 +1,27 @@
 {% extends "auth/_form_base.html" %}
 
-{% block title %}Login · Wizikey{% endblock %}
+{% block title %}Login · Multi Find Relevance{% endblock %}
 
 {% block content %}
-<h1>Welcome back</h1>
-<p class="subtitle">Log in to access your tools</p>
+<h1 style="text-align:center; margin: 0 0 6px;">Welcome back</h1>
+<p class="subtitle">Enter your email to receive a one-time login code</p>
 
 <form method="POST" novalidate>
-    {{ form.hidden_tag() }}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="form-group">
-        <label for="email">Email</label>
-        {{ form.email(id="email", placeholder="you@example.com", autocomplete="email") }}
-        {% for err in form.email.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
+        <label for="email">Work Email</label>
+        <input type="email" id="email" name="email" placeholder="you@company.com"
+               autocomplete="email" required>
     </div>
 
-    <div class="form-group">
-        <label for="password">Password</label>
-        {{ form.password(id="password", placeholder="••••••••", autocomplete="current-password") }}
-        {% for err in form.password.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
-    </div>
-
-    <button type="submit" class="auth-btn">Log in</button>
+    <button type="submit" class="auth-btn">
+        <span>Send OTP</span>
+        &nbsp;→
+    </button>
 </form>
 
-<div class="auth-footer">
-    Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a>
+<div class="auth-footer" style="margin-top: 20px;">
+    A 6-digit code will be emailed to you. It expires in 10 minutes.
 </div>
 {% endblock %}

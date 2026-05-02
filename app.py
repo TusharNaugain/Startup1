@@ -13,7 +13,8 @@ import io
 from datetime import datetime, timedelta
 from duckduckgo_search import DDGS
 
-from extensions import db, login_manager, bcrypt, csrf, limiter, mail
+from extensions import login_manager, csrf, limiter, mail, init_firebase
+from tokens import consume_token
 
 app = Flask(__name__)
 
@@ -21,15 +22,6 @@ app = Flask(__name__)
 # Secrets must come from env in production. Generate one fallback so local
 # dev works; never let SECRET_KEY default in a deployed environment.
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
-
-# Database. Railway exposes DATABASE_URL for the Postgres add-on; fall back
-# to a local sqlite file for development.
-db_url = os.environ.get('DATABASE_URL', 'sqlite:///wizikey.db')
-# Railway sometimes hands out postgres:// — SQLAlchemy 2 wants postgresql://
-if db_url.startswith('postgres://'):
-    db_url = db_url.replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session / cookie hardening
 _in_production = os.environ.get('FLASK_ENV') != 'development'
@@ -69,21 +61,29 @@ os.makedirs(app.config['Result_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PAYMENT_SCREENSHOT_FOLDER'], exist_ok=True)
 
 # ─── Initialize extensions ────────────────────────────────────────────────
-db.init_app(app)
 login_manager.init_app(app)
-bcrypt.init_app(app)
 csrf.init_app(app)
 limiter.init_app(app)
 mail.init_app(app)
 
-# Register blueprints (after extensions are bound to the app)
-from auth import auth_bp  # noqa: E402
-app.register_blueprint(auth_bp)
-
-# Create tables on startup. Idempotent — safe to run on every boot.
+# Firebase
 with app.app_context():
-    import models  # noqa: F401  ensures tables are registered before create_all
-    db.create_all()
+    init_firebase()
+
+# Flask-Login user loader
+from firebase_models import get_firebase_user  # noqa: E402
+
+@login_manager.user_loader
+def load_user(user_id):
+    return get_firebase_user(user_id)
+
+# Register blueprints
+from auth import auth_bp      # noqa: E402
+from payment import payment_bp  # noqa: E402
+from admin import admin_bp    # noqa: E402
+app.register_blueprint(auth_bp)
+app.register_blueprint(payment_bp)
+app.register_blueprint(admin_bp)
 
 # Initialize Link Checker Components
 fetcher = DataFetcher()
@@ -114,6 +114,7 @@ def download_file(filename):
 @app.route('/api/fetch_news', methods=['POST'])
 @csrf.exempt
 @login_required
+@consume_token('news_extractor')
 def api_fetch_news():
     data = request.json
     topic = data.get('topic')
@@ -133,6 +134,7 @@ def api_fetch_news():
 @app.route('/analyze_csv', methods=['POST'])
 @csrf.exempt
 @login_required
+@consume_token('multifind_csv')
 def analyze_csv():
     """
     CSV-based analysis mode for YouTube / Share of Voice exports.
@@ -249,6 +251,7 @@ def analyze_csv():
 @app.route('/analyze', methods=['POST'])
 @csrf.exempt
 @login_required
+@consume_token('multifind')
 def analyze():
     data = request.json
     configs = data.get('configs', [])
@@ -695,6 +698,7 @@ def get_sheets():
 @app.route('/process_headlines', methods=['POST'])
 @csrf.exempt
 @login_required
+@consume_token('headline_analyzer')
 def process_headlines():
     if 'csv_file' not in request.files:
         return render_template('headline_analyzer.html', error="No file part")

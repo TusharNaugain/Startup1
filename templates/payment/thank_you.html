@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width:520px;margin:80px auto;padding:0 20px;text-align:center;">
+    <div style="font-size:54px;color:var(--accent-color);margin-bottom:14px;">
+        <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <h1 style="margin:0 0 10px;">Payment submitted</h1>
+    <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 24px;">
+        Thanks! We've received your transaction details and will verify
+        within 24 hours. You'll get an email at
+        <strong>{{ current_user.email }}</strong> as soon as your tokens
+        are credited.
+    </p>
+    <a href="{{ url_for('home') }}" style="
+        display:inline-block;padding:11px 26px;
+        background:linear-gradient(135deg,#00d2ff 0%,#3a7bd5 100%);
+        color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">
+        Back to dashboard
+    </a>
+    <p style="margin-top:18px;font-size:13px;">
+        <a href="{{ url_for('payment.my_payments') }}" style="color:var(--accent-color);">
+            View payment history
+        </a>
+    </p>
+</div>
+{% endblock %}

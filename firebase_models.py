@@ -1,0 +1,227 @@
+"""Firebase Firestore helpers — replaces SQLAlchemy models.
+
+Collections:
+  users/{email}       — user profile, plan, tokens
+  payments/{id}       — payment records
+  usage_logs/{id}     — tool usage per user
+  otps/{email}        — temporary OTP store (expires in 10 min)
+"""
+import uuid
+from datetime import datetime, timezone, timedelta
+from flask_login import UserMixin
+import firebase_admin
+from firebase_admin import firestore
+
+PLAN_TOKENS = {
+    'free':      10,
+    'starter':   100,
+    'pro':       250,
+    'unlimited': None,  # None = unlimited
+}
+
+PLAN_PRICES = {
+    'starter':   299,
+    'pro':       399,
+    'unlimited': 599,
+}
+
+
+def _db():
+    return firestore.client()
+
+
+# ─── User ────────────────────────────────────────────────────────────────────
+
+class FirebaseUser(UserMixin):
+    """Thin wrapper around a Firestore user document for Flask-Login."""
+
+    def __init__(self, data: dict):
+        self.email              = data['email']
+        self.plan               = data.get('plan', 'free')
+        self.tokens_remaining   = data.get('tokens_remaining', PLAN_TOKENS['free'])
+        self.is_admin           = data.get('is_admin', False)
+        self.created_at         = data.get('created_at')
+
+    # Flask-Login requires get_id() to return a string
+    def get_id(self):
+        return self.email
+
+    @property
+    def id(self):
+        return self.email
+
+    @property
+    def has_unlimited(self):
+        return self.plan == 'unlimited'
+
+    def can_use_tool(self):
+        return self.has_unlimited or (self.tokens_remaining or 0) > 0
+
+    def consume_token(self):
+        """In-memory decrement — caller must persist via update_user_tokens()."""
+        if self.has_unlimited:
+            return
+        if self.tokens_remaining > 0:
+            self.tokens_remaining -= 1
+
+
+def get_user(email: str):
+    """Return user dict or None."""
+    doc = _db().collection('users').document(email).get()
+    return doc.to_dict() if doc.exists else None
+
+
+def get_firebase_user(email: str):
+    """Return FirebaseUser or None."""
+    data = get_user(email)
+    return FirebaseUser(data) if data else None
+
+
+def create_user(email: str, admin_email: str = '') -> FirebaseUser:
+    """Create and return a new user document."""
+    data = {
+        'email':            email,
+        'plan':             'free',
+        'tokens_remaining': PLAN_TOKENS['free'],
+        'is_admin':         email.lower() == admin_email.lower() if admin_email else False,
+        'created_at':       datetime.now(timezone.utc),
+    }
+    _db().collection('users').document(email).set(data)
+    return FirebaseUser(data)
+
+
+def update_user_tokens(email: str, new_tokens: int, new_plan: str = None):
+    update = {'tokens_remaining': new_tokens}
+    if new_plan:
+        update['plan'] = new_plan
+    _db().collection('users').document(email).update(update)
+
+
+def get_all_users():
+    docs = _db().collection('users').order_by(
+        'created_at', direction=firestore.Query.DESCENDING
+    ).stream()
+    return [FirebaseUser(d.to_dict()) for d in docs]
+
+
+def get_user_count():
+    return len(list(_db().collection('users').stream()))
+
+
+# ─── OTP ─────────────────────────────────────────────────────────────────────
+
+def store_otp(email: str, otp: str):
+    """Store OTP with 10-minute TTL and reset attempts counter."""
+    _db().collection('otps').document(email).set({
+        'otp':        otp,
+        'expires_at': datetime.now(timezone.utc) + timedelta(minutes=10),
+        'attempts':   0,
+    })
+
+
+def verify_otp(email: str, otp_input: str):
+    """
+    Returns:
+      'ok'       — OTP matches and is still valid
+      'expired'  — OTP has expired
+      'wrong'    — Wrong OTP (attempts incremented)
+      'locked'   — Too many wrong attempts (≥ 3)
+      'not_found'— No OTP record exists
+    """
+    ref = _db().collection('otps').document(email)
+    doc = ref.get()
+    if not doc.exists:
+        return 'not_found'
+
+    data = doc.to_dict()
+    expires = data['expires_at']
+    # Firestore returns timezone-aware datetimes
+    if isinstance(expires, datetime) and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) > expires:
+        ref.delete()
+        return 'expired'
+
+    attempts = data.get('attempts', 0)
+    if attempts >= 3:
+        ref.delete()
+        return 'locked'
+
+    if data['otp'] != otp_input.strip():
+        ref.update({'attempts': attempts + 1})
+        return 'wrong'
+
+    ref.delete()
+    return 'ok'
+
+
+# ─── Payment ──────────────────────────────────────────────────────────────────
+
+def create_payment(user_email, plan, amount, txn_id, screenshot_path=None):
+    payment_id = uuid.uuid4().hex
+    data = {
+        'id':              payment_id,
+        'user_email':      user_email,
+        'plan':            plan,
+        'amount':          amount,
+        'txn_id':          txn_id,
+        'screenshot_path': screenshot_path,
+        'status':          'pending',
+        'admin_note':      None,
+        'created_at':      datetime.now(timezone.utc),
+        'reviewed_at':     None,
+    }
+    _db().collection('payments').document(payment_id).set(data)
+    return data
+
+
+def get_pending_payments():
+    docs = _db().collection('payments').where(
+        'status', '==', 'pending'
+    ).order_by('created_at').stream()
+    return [d.to_dict() for d in docs]
+
+
+def get_recent_payments(limit=20):
+    docs = _db().collection('payments').where(
+        'status', '!=', 'pending'
+    ).order_by('status').order_by(
+        'created_at', direction=firestore.Query.DESCENDING
+    ).limit(limit).stream()
+    return [d.to_dict() for d in docs]
+
+
+def get_payments_for_user(user_email):
+    docs = _db().collection('payments').where(
+        'user_email', '==', user_email
+    ).order_by('created_at', direction=firestore.Query.DESCENDING).stream()
+    return [d.to_dict() for d in docs]
+
+
+def get_payment(payment_id):
+    doc = _db().collection('payments').document(payment_id).get()
+    return doc.to_dict() if doc.exists else None
+
+
+def review_payment(payment_id, status, admin_note=None):
+    _db().collection('payments').document(payment_id).update({
+        'status':      status,
+        'admin_note':  admin_note,
+        'reviewed_at': datetime.now(timezone.utc),
+    })
+
+
+# ─── Usage Log ────────────────────────────────────────────────────────────────
+
+def log_usage(user_email: str, tool: str):
+    log_id = uuid.uuid4().hex
+    _db().collection('usage_logs').document(log_id).set({
+        'id':         log_id,
+        'user_email': user_email,
+        'tool':       tool,
+        'created_at': datetime.now(timezone.utc),
+    })
+
+
+def get_usage_count():
+    return len(list(_db().collection('usage_logs').stream()))

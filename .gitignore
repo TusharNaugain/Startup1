@@ -41,3 +41,5 @@ credentials.json
 
 # Byte-compiled
 *.pyc
+firebase_credentials.json
+instance/
