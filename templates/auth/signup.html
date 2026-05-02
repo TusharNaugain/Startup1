@@ -1,0 +1,36 @@
+{% extends "auth/_form_base.html" %}
+
+{% block title %}Sign up · Wizikey{% endblock %}
+
+{% block content %}
+<h1>Create your account</h1>
+<p class="subtitle">Start with 10 free tokens — no card required</p>
+
+<form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        {{ form.email(id="email", placeholder="you@example.com", autocomplete="email") }}
+        {% for err in form.email.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
+    </div>
+
+    <div class="form-group">
+        <label for="password">Password</label>
+        {{ form.password(id="password", placeholder="At least 8 characters", autocomplete="new-password") }}
+        {% for err in form.password.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
+    </div>
+
+    <div class="form-group">
+        <label for="confirm">Confirm password</label>
+        {{ form.confirm(id="confirm", placeholder="Repeat your password", autocomplete="new-password") }}
+        {% for err in form.confirm.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
+    </div>
+
+    <button type="submit" class="auth-btn">Create account</button>
+</form>
+
+<div class="auth-footer">
+    Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+</div>
+{% endblock %}

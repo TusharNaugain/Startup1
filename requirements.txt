@@ -24,3 +24,14 @@ openpyxl
 scikit-learn
 cloudscraper
 tqdm
+
+# Auth, DB, security, email
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+Flask-Bcrypt==1.0.1
+Flask-Limiter==3.8.0
+Flask-Mail==0.10.0
+psycopg2-binary==2.9.9
+email-validator==2.2.0
+gunicorn==23.0.0

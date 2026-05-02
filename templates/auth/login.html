@@ -1,0 +1,30 @@
+{% extends "auth/_form_base.html" %}
+
+{% block title %}Login · Wizikey{% endblock %}
+
+{% block content %}
+<h1>Welcome back</h1>
+<p class="subtitle">Log in to access your tools</p>
+
+<form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        {{ form.email(id="email", placeholder="you@example.com", autocomplete="email") }}
+        {% for err in form.email.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
+    </div>
+
+    <div class="form-group">
+        <label for="password">Password</label>
+        {{ form.password(id="password", placeholder="••••••••", autocomplete="current-password") }}
+        {% for err in form.password.errors %}<div class="form-error">{{ err }}</div>{% endfor %}
+    </div>
+
+    <button type="submit" class="auth-btn">Log in</button>
+</form>
+
+<div class="auth-footer">
+    Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a>
+</div>
+{% endblock %}
