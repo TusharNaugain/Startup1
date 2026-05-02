@@ -31,11 +31,14 @@ def _safe_send(msg) -> bool:
 
 def send_otp_email(email: str, otp: str) -> bool:
     """Send a login OTP to the user. Returns True on success."""
+    import os
+
+    # Always print OTP to terminal — handy in dev
+    print(f'\n[OTP] ✉️  {email}  →  {otp}\n', flush=True)
+
     if not _mail_configured():
-        current_app.logger.warning('Mail not configured — OTP not sent (OTP: %s)', otp)
-        # In dev with no mail config, print OTP to server logs so you can test
-        print(f'[DEV] OTP for {email}: {otp}')
-        return True  # don't block login in dev
+        current_app.logger.info('Mail not configured — OTP printed to terminal.')
+        return True
 
     body = f"""Hi,
 
@@ -54,7 +57,16 @@ If you did not request this, you can safely ignore this email.
         recipients=[email],
         body=body,
     )
-    return _safe_send(msg)
+    sent = _safe_send(msg)
+
+    if not sent:
+        is_dev = os.environ.get('FLASK_ENV', 'production') == 'development'
+        if is_dev:
+            current_app.logger.warning('Email send failed — OTP was printed to terminal.')
+            return True
+        return False
+
+    return True
 
 
 # ── Payment notifications ─────────────────────────────────────────────────────

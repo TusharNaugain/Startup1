@@ -40,6 +40,13 @@
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Headline Analyzer</span>
                 </a>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('support.index') }}"
+                    class="{% if request.path.startswith('/support') %}active{% endif %}">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>Help Desk</span>
+                </a>
+                {% endif %}
             </nav>
 
             <!-- ─── Brands Section ─── -->

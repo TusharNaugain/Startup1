@@ -120,3 +120,26 @@ def reject(payment_id):
 def users():
     all_users = get_all_users()
     return render_template('admin/users.html', users=all_users)
+
+
+@admin_bp.route('/tickets')
+@login_required
+@admin_required
+def tickets():
+    from firebase_models import get_all_tickets
+    all_tickets = get_all_tickets()
+    open_count  = sum(1 for t in all_tickets if t.get('status') == 'open')
+    return render_template('admin/tickets.html', tickets=all_tickets, open_count=open_count)
+
+
+@admin_bp.route('/tickets/<ticket_id>/reply', methods=['POST'])
+@login_required
+@admin_required
+def reply_ticket(ticket_id):
+    from firebase_models import update_ticket
+    reply  = (request.form.get('reply') or '').strip()[:2000]
+    status = request.form.get('status', 'resolved')
+    update_ticket(ticket_id, status=status, admin_reply=reply or None)
+    flash('Reply sent and ticket updated.', 'success')
+    return redirect(url_for('admin.tickets'))
+

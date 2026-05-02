@@ -85,9 +85,11 @@ def load_user(user_id):
 from auth import auth_bp      # noqa: E402
 from payment import payment_bp  # noqa: E402
 from admin import admin_bp    # noqa: E402
+from support import support_bp  # noqa: E402
 app.register_blueprint(auth_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(support_bp)
 
 # Initialize Link Checker Components
 fetcher = DataFetcher()

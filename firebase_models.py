@@ -183,12 +183,18 @@ def get_pending_payments():
 
 
 def get_recent_payments(limit=20):
-    docs = _db().collection('payments').where(
-        'status', '!=', 'pending'
-    ).order_by('status').order_by(
+    """Fetch recently reviewed payments (approved or rejected)."""
+    docs = _db().collection('payments').order_by(
         'created_at', direction=firestore.Query.DESCENDING
-    ).limit(limit).stream()
-    return [d.to_dict() for d in docs]
+    ).limit(50).stream()
+    results = []
+    for d in docs:
+        data = d.to_dict()
+        if data.get('status') != 'pending':
+            results.append(data)
+            if len(results) >= limit:
+                break
+    return results
 
 
 def get_payments_for_user(user_email):
@@ -225,3 +231,47 @@ def log_usage(user_email: str, tool: str):
 
 def get_usage_count():
     return len(list(_db().collection('usage_logs').stream()))
+
+
+# ─── Help Desk / Support Tickets ─────────────────────────────────────────────
+
+def create_ticket(user_email: str, subject: str, message: str) -> str:
+    ticket_id = uuid.uuid4().hex
+    _db().collection('support_tickets').document(ticket_id).set({
+        'id':         ticket_id,
+        'user_email': user_email,
+        'subject':    subject,
+        'message':    message,
+        'status':     'open',      # open | resolved
+        'admin_reply': None,
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc),
+    })
+    return ticket_id
+
+
+def get_all_tickets(status_filter=None):
+    query = _db().collection('support_tickets').order_by(
+        'created_at', direction=firestore.Query.DESCENDING
+    )
+    docs = query.stream()
+    tickets = [d.to_dict() for d in docs]
+    if status_filter:
+        tickets = [t for t in tickets if t.get('status') == status_filter]
+    return tickets
+
+
+def get_tickets_for_user(user_email: str):
+    docs = _db().collection('support_tickets').order_by(
+        'created_at', direction=firestore.Query.DESCENDING
+    ).stream()
+    return [d.to_dict() for d in docs if d.to_dict().get('user_email') == user_email]
+
+
+def update_ticket(ticket_id: str, status: str, admin_reply: str = None):
+    _db().collection('support_tickets').document(ticket_id).update({
+        'status':      status,
+        'admin_reply': admin_reply,
+        'updated_at':  datetime.now(timezone.utc),
+    })
+
