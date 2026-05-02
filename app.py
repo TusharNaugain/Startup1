@@ -1,453 +1,119 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask_login import login_required, current_user
 from link_checker import DataFetcher, DataProcessor, expand_keywords
 from news_extractor import fetch_google_news
+from werkzeug.utils import secure_filename
 import concurrent.futures
 import os
-import uuid
+import secrets
 import json
-
-# In-memory cache: preview_id → { raw_path, cust_path, generator }
-# Entries are lightweight; files are already on disk in uploads/
-_PREVIEW_CACHE: dict = {}
-from werkzeug.utils import secure_filename
-from flask import send_file
-from flask import send_file, send_from_directory
-from generate_report import ReportGenerator, send_report_emails
 import pandas as pd
 import re
 import io
-from datetime import datetime
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Matching')))
+from datetime import datetime, timedelta
 from duckduckgo_search import DDGS
+
+from extensions import db, login_manager, bcrypt, csrf, limiter, mail
 
 app = Flask(__name__)
 
-# On serverless platforms (Vercel/AWS Lambda) only /tmp is writable.
-# Detect Vercel via VERCEL env var; otherwise use local project folders.
+# ─── Configuration ────────────────────────────────────────────────────────
+# Secrets must come from env in production. Generate one fallback so local
+# dev works; never let SECRET_KEY default in a deployed environment.
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+
+# Database. Railway exposes DATABASE_URL for the Postgres add-on; fall back
+# to a local sqlite file for development.
+db_url = os.environ.get('DATABASE_URL', 'sqlite:///wizikey.db')
+# Railway sometimes hands out postgres:// — SQLAlchemy 2 wants postgresql://
+if db_url.startswith('postgres://'):
+    db_url = db_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Session / cookie hardening
+_in_production = os.environ.get('FLASK_ENV') != 'development'
+app.config.update(
+    SESSION_COOKIE_SECURE=_in_production,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=timedelta(days=14),
+    REMEMBER_COOKIE_SECURE=_in_production,
+    REMEMBER_COOKIE_HTTPONLY=True,
+    REMEMBER_COOKIE_SAMESITE='Lax',
+    MAX_CONTENT_LENGTH=16 * 1024 * 1024,  # 16MB request cap
+    WTF_CSRF_TIME_LIMIT=None,
+)
+
+# Admin email — whoever signs up with this address gets is_admin=True
+app.config['ADMIN_EMAIL'] = os.environ.get('ADMIN_EMAIL', 'naugaintushar@gmail.com')
+
+# SMTP — used to email the admin when a payment is submitted
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['ADMIN_EMAIL'])
+
+# ─── Filesystem ───────────────────────────────────────────────────────────
 _IS_SERVERLESS = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
 _BASE_WRITE_DIR = '/tmp' if _IS_SERVERLESS else os.path.dirname(os.path.abspath(__file__))
 
 app.config['UPLOAD_FOLDER'] = os.path.join(_BASE_WRITE_DIR, 'uploads')
 app.config['Result_FOLDER'] = os.path.join(_BASE_WRITE_DIR, 'results')
+app.config['PAYMENT_SCREENSHOT_FOLDER'] = os.path.join(_BASE_WRITE_DIR, 'payment_screenshots')
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['Result_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PAYMENT_SCREENSHOT_FOLDER'], exist_ok=True)
+
+# ─── Initialize extensions ────────────────────────────────────────────────
+db.init_app(app)
+login_manager.init_app(app)
+bcrypt.init_app(app)
+csrf.init_app(app)
+limiter.init_app(app)
+mail.init_app(app)
+
+# Register blueprints (after extensions are bound to the app)
+from auth import auth_bp  # noqa: E402
+app.register_blueprint(auth_bp)
+
+# Create tables on startup. Idempotent — safe to run on every boot.
+with app.app_context():
+    import models  # noqa: F401  ensures tables are registered before create_all
+    db.create_all()
 
 # Initialize Link Checker Components
 fetcher = DataFetcher()
 processor = DataProcessor()
 
-# Ensure directories exist
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['Result_FOLDER'], exist_ok=True)
 
 @app.route('/')
+@login_required
 def home():
     return render_template('index.html')
 
-@app.route('/analytics')
-def analytics():
-    return render_template('analytics.html')
-
 @app.route('/news_tool')
+@login_required
 def news_tool():
     return render_template('news_extractor.html')
 
-@app.route('/excel_automater')
-def excel_automater():
-    return render_template('excel_automater.html')
-
 @app.route('/headline_tool')
+@login_required
 def headline_tool():
     return render_template('headline_analyzer.html')
 
 @app.route('/download/<path:filename>')
+@login_required
 def download_file(filename):
     return send_from_directory(app.config['Result_FOLDER'], filename, as_attachment=True)
 
-@app.route('/process_excel', methods=['POST'])
-def process_excel():
-    if 'raw_file' not in request.files or 'customer_file' not in request.files:
-        return "Missing files", 400
-    
-    raw_file = request.files['raw_file']
-    customer_file = request.files['customer_file']
-    
-    if raw_file.filename == '' or customer_file.filename == '':
-        return "No selected file", 400
-
-    # Save Uploads
-    raw_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(raw_file.filename))
-    customer_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(customer_file.filename))
-    
-    raw_file.save(raw_path)
-    customer_file.save(customer_path)
-    
-    try:
-        # Run Automation Logic
-        generator = ReportGenerator(raw_path, customer_path)
-        
-        # Override output location to results folder
-        # Ensure output filename always ends in .xlsx
-        base_name = os.path.splitext(secure_filename(raw_file.filename))[0]
-        output_filename = f"Report_{base_name}.xlsx"
-        generator.output_file = os.path.join(app.config['Result_FOLDER'], output_filename)
-        
-        generator.load_data()
-        generator.process_data()
-        generator.generate_sheets()
-        generated_file_path = generator.save_report()
-        
-        # Use absolute path and explicit download name
-        abs_path = os.path.abspath(generated_file_path)
-        return send_file(abs_path, as_attachment=True, download_name=output_filename)
-        
-    except Exception as e:
-        return f"Error processing files: {str(e)}", 500
-
-
-@app.route('/process_excel_pdf', methods=['POST'])
-def process_excel_pdf():
-    """
-    Generate the Excel report then render a styled HTML summary and return it as a PDF.
-    Uses weasyprint for HTML→PDF conversion (already installed).
-    """
-    if 'raw_file' not in request.files or 'customer_file' not in request.files:
-        return "Missing files", 400
-
-    raw_file      = request.files['raw_file']
-    customer_file = request.files['customer_file']
-    if raw_file.filename == '' or customer_file.filename == '':
-        return "No selected file", 400
-
-    raw_path  = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(raw_file.filename))
-    cust_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(customer_file.filename))
-    raw_file.save(raw_path)
-    customer_file.save(cust_path)
-
-    try:
-        from weasyprint import HTML as WP_HTML
-
-        generator = ReportGenerator(raw_path, cust_path)
-        base_name = os.path.splitext(secure_filename(raw_file.filename))[0]
-        output_filename = f"Report_{base_name}.xlsx"
-        generator.output_file = os.path.join(app.config['Result_FOLDER'], output_filename)
-        generator.load_data()
-        generator.process_data()
-        generator.generate_sheets()
-        generator.save_report()
-
-        # ── Build a clean HTML summary for PDF ──────────────────────────
-        def pivot_to_html(rows, title):
-            if not rows:
-                return f'<h2>{title}</h2><p style="color:#888;">No data available.</p>'
-            html = f'<h2 style="color:#2c3e6b;border-bottom:2px solid #2c3e6b;padding-bottom:6px;">{title}</h2>'
-            html += '''<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:28px;">
-                <thead><tr>
-                  <th style="background:#2c3e6b;color:#fff;padding:8px 10px;text-align:left;">Status</th>
-                  <th style="background:#2c3e6b;color:#fff;padding:8px 10px;text-align:left;">Usage Tier</th>
-                  <th style="background:#2c3e6b;color:#fff;padding:8px 10px;text-align:left;">Email</th>
-                  <th style="background:#2c3e6b;color:#fff;padding:8px 10px;text-align:right;">Total Usage</th>
-                </tr></thead><tbody>'''
-            for r in rows:
-                rt = r.get('_row_type', 'data')
-                if rt == 'grand_total':
-                    bg = '#1F4E79'; fg = '#fff'; fw = 'bold'
-                elif rt == 'status_total':
-                    bg = '#8EA9C1'; fg = '#fff'; fw = 'bold'
-                elif rt == 'usage_total':
-                    bg = '#B8CCE4'; fg = '#333'; fw = 'bold'
-                else:
-                    bg = '#DCE6F1' if rows.index(r) % 2 == 0 else '#EAF0F8'; fg = '#333'; fw = 'normal'
-                html += f'''<tr style="background:{bg};color:{fg};font-weight:{fw};">
-                  <td style="padding:6px 10px;border-bottom:1px solid #ccc;">{r.get("Status","")}</td>
-                  <td style="padding:6px 10px;border-bottom:1px solid #ccc;">{r.get("Usage","")}</td>
-                  <td style="padding:6px 10px;border-bottom:1px solid #ccc;">{r.get("actor.properties.email","")}</td>
-                  <td style="padding:6px 10px;border-bottom:1px solid #ccc;text-align:right;">{r.get("SUM of Total Usage","")}</td>
-                </tr>'''
-            html += '</tbody></table>'
-            return html
-
-        report_date = datetime.now().strftime('%d %B %Y')
-        full_html = f'''<!DOCTYPE html><html><head>
-        <meta charset="UTF-8">
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; color: #333; }}
-            h1   {{ color: #2c3e6b; font-size: 22px; margin-bottom: 4px; }}
-            .subtitle {{ color: #888; font-size: 13px; margin-bottom: 32px; }}
-            .footer {{ margin-top: 40px; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px; }}
-        </style></head><body>
-        <h1>📊 Weekly Usage Report</h1>
-        <p class="subtitle">Generated on {report_date} · Wizikey Product Analytics</p>
-        {pivot_to_html(generator.lead_pivot_rows, "Lead Sheet — Usage Pivot")}
-        {pivot_to_html(generator.customer_pivot_rows, "Customer Sheet — Usage Pivot")}
-        <div class="footer">CONFIDENTIAL — This report is intended for internal use only.</div>
-        </body></html>'''
-
-        pdf_bytes = WP_HTML(string=full_html).write_pdf()
-        pdf_filename = f"Report_{base_name}.pdf"
-
-        return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=pdf_filename,
-        )
-
-    except Exception as e:
-        return f"Error generating PDF: {str(e)}", 500
-
-
-# Hardcoded sender identity — all emails go from this address
-_SENDER_EMAIL = "naugaintushar@gmail.com"
-
-
-def _build_generator(raw_file, customer_file):
-    """Save uploaded files and return an initialised, processed ReportGenerator."""
-    raw_path  = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(raw_file.filename))
-    cust_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(customer_file.filename))
-    raw_file.save(raw_path)
-    customer_file.save(cust_path)
-    gen = ReportGenerator(raw_path, cust_path)
-    gen.load_data()
-    gen.process_data()
-    gen.generate_sheets()
-    return gen
-
-
-@app.route('/preview_email', methods=['POST'])
-def preview_email():
-    """
-    Generate email HTML for the requested sheet_type.
-    Saves files to disk, caches the generator under a preview_id, and injects
-    an editable toolbar into the returned HTML so the user can tweak names and
-    send directly from the preview tab.
-    """
-    if 'raw_file' not in request.files or 'customer_file' not in request.files:
-        return jsonify({'error': 'raw_file and customer_file are required.'}), 400
-
-    raw_file      = request.files['raw_file']
-    customer_file = request.files['customer_file']
-    if not raw_file.filename or not customer_file.filename:
-        return jsonify({'error': 'No file selected.'}), 400
-
-    sheet_type       = request.form.get('sheet_type', 'Lead')
-    lead_recipients  = request.form.get('lead_recipients', '')
-    cust_recipients  = request.form.get('customer_recipients', '')
-    sheet_link       = request.form.get('sheet_link', '')
-    preview_password = request.form.get('sender_password', '').strip()
-
-    try:
-        gen = _build_generator(raw_file, customer_file)
-
-        # Cache generator + file paths so /send_from_preview can reuse them
-        preview_id = str(uuid.uuid4())
-        _PREVIEW_CACHE[preview_id] = {
-            'raw_path':  gen.raw_data_file,
-            'cust_path': gen.customer_file,
-            'generator': gen,
-        }
-
-        # Load profile image for signature
-        _profile_img_path = os.path.join(os.path.dirname(__file__), 'static', 'sujata.jpg')
-        _profile_bytes = open(_profile_img_path, 'rb').read() if os.path.isfile(_profile_img_path) else None
-
-        # Load award image for signature
-        _award_img_path = os.path.join(os.path.dirname(__file__), 'static', 'Reward.png')
-        _award_bytes = open(_award_img_path, 'rb').read() if os.path.isfile(_award_img_path) else None
-
-        html = gen.build_email_html(
-            sheet_type        = sheet_type,
-            sheet_link        = sheet_link,
-            prev_grand_total  = 0,
-            sender_name       = request.form.get('sender_name', 'Sujata Balasubramanium'),
-            sender_title      = request.form.get('sender_title', 'Product Analyst'),
-            sender_linkedin   = '',
-            sender_website    = 'www.wizikey.com',
-            sender_email_addr = 'sujata@wizikey.com',
-            sender_address    = '3rd floor - Time Square Building - Sushant Lok 1 - Sector 43, Gurugram, 122009',
-            has_profile_image = _profile_bytes is not None,
-            has_award_image   = _award_bytes is not None,
-            profile_image_bytes = _profile_bytes,
-            award_image_bytes   = _award_bytes,
-            preview_mode      = True,
-            preview_id        = preview_id,
-            preview_password  = preview_password,
-            preview_sheet_type       = sheet_type,
-            preview_lead_recipients  = lead_recipients,
-            preview_cust_recipients  = cust_recipients,
-        )
-        return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/send_from_preview', methods=['POST'])
-def send_from_preview():
-    """
-    Send an email using a cached preview's files.
-    Accepts: preview_id, sheet_type, sender_password, recipients (comma-sep),
-             name_overrides (JSON string: {email: corrected_name})
-    """
-    data = request.get_json(force=True)
-    preview_id  = data.get('preview_id', '')
-    sheet_type  = data.get('sheet_type', 'Lead')
-    password    = data.get('sender_password', '').strip().replace(' ', '')
-    recipients  = [e.strip() for e in data.get('recipients', '').split(',') if e.strip()]
-    name_overrides = data.get('name_overrides', {})
-    workspace_overrides = data.get('workspace_overrides', {})
-    sheet_link  = data.get('sheet_link', '')
-
-    if not preview_id or preview_id not in _PREVIEW_CACHE:
-        return jsonify({'error': 'Preview session expired or not found. Please regenerate the preview.'}), 400
-    if not password:
-        return jsonify({'error': 'Gmail App Password is required.'}), 400
-    if not recipients:
-        return jsonify({'error': 'At least one recipient is required.'}), 400
-
-    cached = _PREVIEW_CACHE[preview_id]
-    gen    = cached['generator']
-
-    # Apply name overrides to the generator's other_insights_dfs
-    if name_overrides or workspace_overrides:
-        def _apply_override(df):
-            if hasattr(df, 'empty') and not df.empty and 'User Email' in df.columns:
-                if name_overrides and 'User Name' in df.columns:
-                    df['User Name'] = df.apply(
-                        lambda r: name_overrides.get(str(r['User Email']), r['User Name']),
-                        axis=1
-                    )
-                if workspace_overrides and 'Workspace Name' in df.columns:
-                    df['Workspace Name'] = df.apply(
-                        lambda r: workspace_overrides.get(str(r['User Email']), r['Workspace Name']),
-                        axis=1
-                    )
-        
-        if hasattr(gen, 'other_insights_df'): _apply_override(gen.other_insights_df)
-        if hasattr(gen, 'lead_other_insights'): _apply_override(gen.lead_other_insights)
-        if hasattr(gen, 'customer_other_insights'): _apply_override(gen.customer_other_insights)
-
-    try:
-        output_filename = f"Report_preview_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-        report_path     = os.path.join(app.config['Result_FOLDER'], output_filename)
-        gen.output_file = report_path
-        gen.save_report()
-    except Exception as e:
-        return jsonify({'error': f'Report generation failed: {str(e)}'}), 500
-
-    lead_rec = recipients if sheet_type == 'Lead' else []
-    cust_rec = recipients if sheet_type == 'Customer' else []
-
-    # Load profile image for signature
-    _profile_img_path = os.path.join(os.path.dirname(__file__), 'static', 'sujata.jpg')
-    _profile_bytes = open(_profile_img_path, 'rb').read() if os.path.isfile(_profile_img_path) else None
-
-    # Load award image for signature
-    _award_img_path = os.path.join(os.path.dirname(__file__), 'static', 'Reward.png')
-    _award_bytes = open(_award_img_path, 'rb').read() if os.path.isfile(_award_img_path) else None
-
-    try:
-        results = send_report_emails(
-            generator           = gen,
-            sender_email        = _SENDER_EMAIL,
-            sender_password     = password,
-            lead_recipients     = lead_rec,
-            customer_recipients = cust_rec,
-            report_file_path    = report_path,
-            sheet_link          = sheet_link,
-            prev_grand_total    = 0,
-            sender_name         = 'Sujata Balasubramanium',
-            sender_title        = 'Product Analyst',
-            sender_linkedin     = '',
-            sender_website      = 'www.wizikey.com',
-            sender_email_addr   = _SENDER_EMAIL,
-            sender_address      = '3rd floor - Time Square Building - Sushant Lok 1 - Sector 43, Gurugram, 122009',
-            profile_image_bytes = _profile_bytes,
-            award_image_bytes   = _award_bytes,
-        )
-    except Exception as e:
-        return jsonify({'error': f'Email sending failed: {str(e)}'}), 500
-
-    status_code = 207 if results['errors'] else 200
-    return jsonify({
-        'status':        'ok' if not results['errors'] else 'partial',
-        'lead_sent':     results['lead_sent'],
-        'customer_sent': results['customer_sent'],
-        'errors':        results['errors'],
-    }), status_code
-
-
-@app.route('/send_email', methods=['POST'])
-def send_email():
-    """
-    Generate report and send Lead / Customer emails.
-    Sender is always tushar@wizikey.com.
-    Requires: raw_file, customer_file, sender_password, lead_recipients / customer_recipients.
-    """
-    if 'raw_file' not in request.files or 'customer_file' not in request.files:
-        return jsonify({'error': 'raw_file and customer_file are required.'}), 400
-
-    raw_file      = request.files['raw_file']
-    customer_file = request.files['customer_file']
-    if not raw_file.filename or not customer_file.filename:
-        return jsonify({'error': 'No file selected.'}), 400
-
-    sender_password = request.form.get('sender_password', '').strip().replace(' ', '')
-    print(f"[SMTP DEBUG] Password received — length: {len(sender_password)} chars (expected 16)")
-    if not sender_password:
-        return jsonify({'error': 'sender_password is required.'}), 400
-
-    lead_recipients = [e.strip() for e in request.form.get('lead_recipients', '').split(',') if e.strip()]
-    cust_recipients = [e.strip() for e in request.form.get('customer_recipients', '').split(',') if e.strip()]
-    if not lead_recipients and not cust_recipients:
-        return jsonify({'error': 'At least one recipient is required.'}), 400
-
-    try:
-        gen             = _build_generator(raw_file, customer_file)
-        output_filename = f"Report_web_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-        report_path     = os.path.join(app.config['Result_FOLDER'], output_filename)
-        gen.output_file = report_path
-        gen.save_report()
-    except Exception as e:
-        return jsonify({'error': f'Report generation failed: {str(e)}'}), 500
-
-    # Load profile image for signature
-    _profile_img_path = os.path.join(os.path.dirname(__file__), 'static', 'sujata_profile.png')
-    _profile_bytes = open(_profile_img_path, 'rb').read() if os.path.isfile(_profile_img_path) else None
-
-    # Load award image for signature
-    _award_img_path = os.path.join(os.path.dirname(__file__), 'static', 'pr_tech_award.png')
-    _award_bytes = open(_award_img_path, 'rb').read() if os.path.isfile(_award_img_path) else None
-
-    try:
-        results = send_report_emails(
-            generator           = gen,
-            sender_email        = _SENDER_EMAIL,
-            sender_password     = sender_password,
-            lead_recipients     = lead_recipients,
-            customer_recipients = cust_recipients,
-            report_file_path    = report_path,
-            sheet_link          = request.form.get('sheet_link', ''),
-            prev_grand_total    = 0,
-            sender_name         = 'Sujata Balasubramanium',
-            sender_title        = 'Product Analyst',
-            sender_linkedin     = '',
-            sender_website      = 'www.wizikey.com',
-            sender_email_addr   = _SENDER_EMAIL,
-            sender_address      = '3rd floor - Time Square Building - Sushant Lok 1 - Sector 43, Gurugram, 122009',
-            profile_image_bytes = _profile_bytes,
-            award_image_bytes   = _award_bytes,
-        )
-    except Exception as e:
-        return jsonify({'error': f'Email sending failed: {str(e)}'}), 500
-
-    status_code = 207 if results['errors'] else 200
-    return jsonify({
-        'status':        'ok' if not results['errors'] else 'partial',
-        'lead_sent':     results['lead_sent'],
-        'customer_sent': results['customer_sent'],
-        'errors':        results['errors'],
-    }), status_code
-
 
 @app.route('/api/fetch_news', methods=['POST'])
+@csrf.exempt
+@login_required
 def api_fetch_news():
     data = request.json
     topic = data.get('topic')
@@ -465,6 +131,8 @@ def api_fetch_news():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/analyze_csv', methods=['POST'])
+@csrf.exempt
+@login_required
 def analyze_csv():
     """
     CSV-based analysis mode for YouTube / Share of Voice exports.
@@ -579,7 +247,8 @@ def analyze_csv():
 
 
 @app.route('/analyze', methods=['POST'])
-
+@csrf.exempt
+@login_required
 def analyze():
     data = request.json
     configs = data.get('configs', [])
@@ -1004,6 +673,8 @@ def process_single_link(url, configs, deep_verify=False):
         }]
 
 @app.route('/api/get_sheets', methods=['POST'])
+@csrf.exempt
+@login_required
 def get_sheets():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
@@ -1022,6 +693,8 @@ def get_sheets():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/process_headlines', methods=['POST'])
+@csrf.exempt
+@login_required
 def process_headlines():
     if 'csv_file' not in request.files:
         return render_template('headline_analyzer.html', error="No file part")

@@ -29,24 +29,16 @@
                     <i class="fa-solid fa-compass"></i>
                     <span>Multi Find Relevant&Irrelevant link</span>
                 </a>
-                <a href="{{ url_for('analytics') }}" class="{% if request.path == '/analytics' %}active{% endif %}">
-                    <i class="fa-solid fa-table"></i>
-                    <span>Google Sheet</span>
-                </a>
                 <a href="{{ url_for('news_tool') }}" class="{% if request.path == '/news_tool' %}active{% endif %}">
                     <i class="fa-solid fa-rss"></i>
                     <span>News Extractor</span>
-                </a>
-                <a href="{{ url_for('excel_automater') }}"
-                    class="{% if request.path == '/excel_automater' %}active{% endif %}">
-                    <i class="fa-solid fa-file-excel"></i>
-                    <span>Excel Automater</span>
                 </a>
                 <a href="{{ url_for('headline_tool') }}"
                     class="{% if request.path == '/headline_tool' %}active{% endif %}">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Headline Analyzer</span>
                 </a>
+                {# Admin link added in Phase 2 once the admin blueprint exists. #}
             </nav>
 
             <!-- ─── Brands Section ─── -->
@@ -64,8 +56,26 @@
             </div>
 
             <div class="user-profile">
+                {% if current_user.is_authenticated %}
                 <i class="fa-solid fa-user-circle"></i>
-                <span>Sujata Balasubramanium</span>
+                <div class="user-profile-info">
+                    <div class="user-name">{{ current_user.email }}</div>
+                    <div class="user-tokens">
+                        {% if current_user.plan == 'unlimited' %}
+                        <i class="fa-solid fa-infinity"></i> Unlimited
+                        {% else %}
+                        <i class="fa-solid fa-coins"></i> {{ current_user.tokens_remaining }} tokens
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="logout-link">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                </div>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="logout-link">
+                    <i class="fa-solid fa-right-to-bracket"></i> Login
+                </a>
+                {% endif %}
             </div>
         </aside>
 
