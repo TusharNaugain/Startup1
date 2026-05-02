@@ -293,6 +293,11 @@
                     <button class="secondary-btn" onclick="addRuleBox()" style="padding: 6px 12px; font-size: 0.8rem;">
                         <i class="fa-solid fa-plus"></i> Add Another Rule
                     </button>
+                    <button class="secondary-btn" onclick="clearAllRules()"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,107,107,0.35); color:#ff6b6b;"
+                        title="Remove all brand rules">
+                        <i class="fa-solid fa-trash-can"></i> Clear All Rules
+                    </button>
                 </div>
             </div>
             <!-- CSV import status bar -->
@@ -367,7 +372,15 @@
         <div id="tabUrlPanel">
             <div class="links-section">
                 <div class="form-group">
-                    <label for="links"><i class="fa-solid fa-link"></i> Paste Links (One per line)</label>
+                    <label for="links" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="fa-solid fa-link"></i> Paste Links (One per line)</span>
+                        <button onclick="document.getElementById('links').value=''"
+                            style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.35);
+                                   color:#ff6b6b;padding:3px 10px;border-radius:6px;font-size:0.72rem;
+                                   font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;">
+                            <i class="fa-solid fa-trash-can"></i> Clear URLs
+                        </button>
+                    </label>
                     <textarea id="links" rows="5"
                         placeholder="https://example.com&#10;https://another-article.com"></textarea>
                 </div>

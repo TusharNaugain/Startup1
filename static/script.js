@@ -230,6 +230,13 @@ function importKeywordsCsv(input) {
     input.value = '';
 }
 
+function clearAllRules() {
+    if (!confirm('Clear all brand rules? This cannot be undone.')) return;
+    const container = document.getElementById('keywordRulesContainer');
+    container.innerHTML = '';
+    addRuleBox(); // add one fresh empty rule
+}
+
 function addRuleBox(prefill = {}) {
     const container = document.getElementById('keywordRulesContainer');
     const box = document.createElement('div');
