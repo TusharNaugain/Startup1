@@ -443,6 +443,15 @@ async function analyzeLinks() {
             })
         });
 
+        if (response.status === 402) {
+            if (typeof showPaywallModal === 'function') {
+                showPaywallModal();
+            } else {
+                alert('Out of tokens. Please upgrade your plan.');
+            }
+            return;
+        }
+
         const data = await response.json();
 
         if (data.error) {

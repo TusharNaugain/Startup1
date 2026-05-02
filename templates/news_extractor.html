@@ -419,6 +419,18 @@ async function fetchNews() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ topic: kw, country, start_date: startDate || null, end_date: endDate || null })
             });
+
+            if (resp.status === 402) {
+                if (typeof showPaywallModal === 'function') {
+                    showPaywallModal();
+                } else {
+                    alert('Out of tokens. Please upgrade your plan.');
+                }
+                statusText.textContent = 'Action stopped (Out of tokens).';
+                progressBarContainer.style.display = 'none';
+                break;
+            }
+
             const data = await resp.json();
             if (data.error) {
                 console.warn(`Error for keyword "${kw}":`, data.error);

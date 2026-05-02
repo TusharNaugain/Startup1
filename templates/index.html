@@ -473,6 +473,16 @@
 
                 try {
                     const resp = await fetch('/analyze_csv', { method: 'POST', body: form });
+                    
+                    if (resp.status === 402) {
+                        if (typeof showPaywallModal === 'function') {
+                            showPaywallModal();
+                        } else {
+                            alert('Out of tokens. Please upgrade your plan.');
+                        }
+                        return;
+                    }
+
                     if (!resp.ok) throw new Error(await resp.text());
                     const data = await resp.json();
                     globalResults = data.results || [];

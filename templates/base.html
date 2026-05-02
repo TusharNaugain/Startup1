@@ -38,7 +38,20 @@
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Headline Analyzer</span>
                 </a>
-                {# Admin link added in Phase 2 once the admin blueprint exists. #}
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('admin.dashboard') }}"
+                    class="{% if request.path.startswith('/admin') %}active{% endif %}">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Admin</span>
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('payment.plans') }}"
+                    class="{% if request.path.startswith('/billing') %}active{% endif %}">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Upgrade Plan</span>
+                </a>
+                {% endif %}
             </nav>
 
             <!-- ─── Brands Section ─── -->
@@ -85,6 +98,7 @@
         </main>
     </div>
 
+    {% include 'partials/paywall_modal.html' %}
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 

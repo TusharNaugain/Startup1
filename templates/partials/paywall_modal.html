@@ -1,0 +1,116 @@
+<style>
+/* Paywall Modal Styles */
+.paywall-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.paywall-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.paywall-modal-content {
+    background: #111;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.paywall-modal-overlay.active .paywall-modal-content {
+    transform: translateY(0);
+}
+
+.paywall-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.paywall-modal-close:hover {
+    color: var(--danger-color);
+}
+
+.paywall-qr-container {
+    margin: 20px 0;
+    padding: 10px;
+    background: #fff;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.paywall-qr-container img {
+    max-width: 200px;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+}
+
+.paywall-instructions {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+</style>
+
+<div class="paywall-modal-overlay" id="paywallModal">
+    <div class="paywall-modal-content">
+        <button class="paywall-modal-close" onclick="closePaywallModal()"><i class="fa-solid fa-times"></i></button>
+        <h2 style="margin-top: 0; color: var(--text-primary);"><i class="fa-solid fa-lock" style="color: var(--accent-color);"></i> Action Required</h2>
+        <p class="paywall-instructions">
+            You don't have enough tokens to perform this action. To add tokens to your account, please scan the QR code below.
+        </p>
+        
+        <div class="paywall-qr-container">
+            <img src="{{ url_for('static', filename='qr_placeholder.jpg') }}" alt="UPI QR Code" id="paywallQrImage">
+        </div>
+        
+        <p class="paywall-instructions" style="font-size: 0.85rem;">
+            After successful payment, please wait for your account to be credited or contact support for help.
+        </p>
+        
+        <button class="primary-btn" style="width: 100%; justify-content: center;" onclick="closePaywallModal()">Okay, got it</button>
+    </div>
+</div>
+
+<script>
+function showPaywallModal() {
+    const modal = document.getElementById('paywallModal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closePaywallModal() {
+    const modal = document.getElementById('paywallModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+</script>
