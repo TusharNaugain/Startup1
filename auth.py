@@ -138,6 +138,7 @@ def resend_otp():
 @login_required
 def logout():
     logout_user()
-    session.clear()
+    # DO NOT call session.clear() here. It deletes the '_remember': 'clear' 
+    # flag set by logout_user(), which prevents the remember_me cookie from being deleted!
     flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))
