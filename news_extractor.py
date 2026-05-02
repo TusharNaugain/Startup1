@@ -131,6 +131,10 @@ def fetch_google_web_news(topic, country="IN", start_date=None, end_date=None):
                 if actual_url in seen_urls:
                     continue
 
+                # Quick relevance check: keyword must appear in the link text/title
+                if topic.lower() not in text.lower():
+                    continue
+
                 seen_urls.add(actual_url)
 
                 # Try to extract source from URL domain
@@ -303,8 +307,31 @@ def fetch_google_news(topic, country="IN", start_date=None, end_date=None, verif
     if new_from_web:
         print(f"  -> Added {new_from_web} NEW articles from web search (not in RSS)")
 
-    all_articles = candidates
-    print(f"  -> Total combined articles: {len(all_articles)}")
+    print(f"  -> Total combined articles before verification: {len(candidates)}")
+
+    # ── Keyword Verification ──
+    # Always verify the keyword is actually present in each article.
+    # Check title first (fast), then RSS summary, then fetch the article body.
+    print(f"Verifying keyword '{topic}' presence in all {len(candidates)} articles...")
+    verified_articles = []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        future_to_art = {
+            executor.submit(check_keyword_in_content, art, topic, headers): art
+            for art in candidates
+        }
+        for future in concurrent.futures.as_completed(future_to_art):
+            try:
+                result = future.result()
+                if result is not None:
+                    verified_articles.append(result)
+            except Exception:
+                pass
+
+    print(f"  -> {len(verified_articles)} articles passed keyword verification (keyword found in title/summary/body)")
+    print(f"  -> {len(candidates) - len(verified_articles)} articles rejected (keyword not found)")
+
+    all_articles = verified_articles
 
     # Sort by Date (Newest first, web search articles without dates go last)
     all_articles.sort(

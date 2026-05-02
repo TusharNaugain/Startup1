@@ -274,11 +274,18 @@
         <!-- ─── Keyword Rules ─── -->
         <div class="multifind-wrapper">
             <div class="results-summary"
-                style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <p style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; margin: 0;">
-                    Note: This is the keyword for display purpose in the charts, it'll not affect your feed.
+                    Note: Brand Keyword is the match keyword. Separate multiple with commas.
                 </p>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <!-- CSV Keyword Import -->
+                    <button class="secondary-btn" onclick="document.getElementById('mfKwCsvInput').click()"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(124,58,237,0.4); color: #a78bfa;"
+                        title="Upload a CSV with one keyword per row — each becomes a new rule box">
+                        <i class="fa-solid fa-file-csv"></i> Import Keywords CSV
+                    </button>
+                    <input type="file" id="mfKwCsvInput" accept=".csv" style="display:none" onchange="importKeywordsCsv(this)">
                     <button class="secondary-btn" onclick="saveCurrentSetup()"
                         style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(0,210,255,0.4); color: var(--accent-color);">
                         <i class="fa-solid fa-bookmark"></i> Save as Config
@@ -287,6 +294,11 @@
                         <i class="fa-solid fa-plus"></i> Add Another Rule
                     </button>
                 </div>
+            </div>
+            <!-- CSV import status bar -->
+            <div id="mfCsvImportStatus" style="display:none;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:8px 14px;font-size:0.82rem;color:#a78bfa;margin-bottom:10px;">
+                <i class="fa-solid fa-circle-info"></i> <span id="mfCsvImportMsg"></span>
+                <button onclick="document.getElementById('mfCsvImportStatus').style.display='none'" style="float:right;background:none;border:none;color:#a78bfa;cursor:pointer;font-size:0.9rem;">✕</button>
             </div>
 
             <div id="keywordRulesContainer">

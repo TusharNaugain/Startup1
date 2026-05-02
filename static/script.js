@@ -154,6 +154,82 @@ function saveCurrentSetup() {
 
 /* ─── UI Management ─── */
 
+/* ── CSV parser helper — handles quoted fields, BOM, and auto-detects delimiter ── */
+function parseCsvFirstColumn(text) {
+    // Strip BOM if present
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+    const lines = text.split(/\r?\n/);
+    if (!lines.length) return [];
+
+    // Auto-detect delimiter from first non-empty line
+    const firstLine = lines.find(l => l.trim()) || '';
+    let delim = ',';
+    if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) delim = ';';
+    else if ((firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length) delim = '\t';
+
+    const results = [];
+    lines.forEach((line, idx) => {
+        if (!line.trim()) return;
+
+        // Proper CSV field parser for quoted fields
+        const fields = [];
+        let cur = '', inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (inQuote) {
+                if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+                else if (ch === '"') { inQuote = false; }
+                else { cur += ch; }
+            } else {
+                if (ch === '"') { inQuote = true; }
+                else if (ch === delim) { fields.push(cur); cur = ''; }
+                else { cur += ch; }
+            }
+        }
+        fields.push(cur);
+
+        const kw = (fields[0] || '').trim();
+        if (!kw) return;
+        // Skip header row
+        if (idx === 0 && /keyword|topic|name|search|term|query/i.test(kw)) return;
+        results.push(kw);
+    });
+    return results;
+}
+
+/* ── Import keywords from CSV into Multifind rule boxes ── */
+function importKeywordsCsv(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const keywords = parseCsvFirstColumn(e.target.result);
+        const container = document.getElementById('keywordRulesContainer');
+
+        const BATCH = 50;  // max rules from CSV to avoid DOM overload
+        let added = 0;
+
+        keywords.forEach(kw => {
+            if (added >= BATCH) return;
+            addRuleBox({ brandKeyword: kw });
+            added++;
+        });
+
+        const total = keywords.length;
+        const statusEl = document.getElementById('mfCsvImportStatus');
+        const msgEl    = document.getElementById('mfCsvImportMsg');
+        if (statusEl && msgEl) {
+            const skipped = total > BATCH ? ` (${total - BATCH} skipped — max ${BATCH} at a time to keep things fast)` : '';
+            msgEl.textContent = `Imported ${added} keyword rule${added !== 1 ? 's' : ''} from "${file.name}"${skipped}. Review rules below, then click Analyze.`;
+            statusEl.style.display = 'block';
+        }
+    };
+    reader.readAsText(file);
+    // Reset input so the same file can be re-imported
+    input.value = '';
+}
+
 function addRuleBox(prefill = {}) {
     const container = document.getElementById('keywordRulesContainer');
     const box = document.createElement('div');
@@ -400,6 +476,8 @@ async function analyzeLinks() {
         loader.classList.add('hidden');
     }
 }
+const _NEWS_PAGE_SIZE = 300; // rows above this get paginated to avoid DOM lag
+
 function renderTable(results) {
     const tableBody = document.querySelector('#resultsTable tbody');
     tableBody.innerHTML = '';
@@ -409,23 +487,53 @@ function renderTable(results) {
         return;
     }
 
-    results.forEach(row => {
-        const tr = document.createElement('tr');
+    // For very large result sets, render first chunk immediately then stream the rest
+    const renderChunk = (items, startIdx) => {
+        const frag = document.createDocumentFragment();
+        items.forEach(row => {
+            const tr = document.createElement('tr');
+            let statusClass = 'status-badge ';
+            if (row.Status.startsWith('Relevant')) statusClass += 'status-relevant';
+            else if (row.Status === 'Irrelevant (Excluded)') statusClass += 'status-missing';
+            else if (row.Status.startsWith('Irrelevant')) statusClass += 'status-irrelevant';
+            else statusClass += 'status-missing';
 
-        let statusClass = 'status-badge ';
-        if (row.Status.startsWith('Relevant')) statusClass += 'status-relevant';
-        else if (row.Status === 'Irrelevant (Excluded)') statusClass += 'status-missing';
-        else if (row.Status.startsWith('Irrelevant')) statusClass += 'status-irrelevant';
-        else statusClass += 'status-missing';
+            tr.innerHTML = `
+                <td style="font-weight:600;">${escHtml(row.brandName)}</td>
+                <td><span class="${statusClass}">${escHtml(row.Status)}</span></td>
+                <td class="url-cell"><a href="${escHtml(row.URL)}" target="_blank" title="${escHtml(row.URL)}">${escHtml(row.URL)}</a></td>
+                <td style="font-size:0.82rem;">${escHtml(row['Found Keywords'] || '–')}</td>
+            `;
+            frag.appendChild(tr);
+        });
+        tableBody.appendChild(frag);
+    };
 
-        tr.innerHTML = `
-            <td style="font-weight:600;">${escHtml(row.brandName)}</td>
-            <td><span class="${statusClass}">${escHtml(row.Status)}</span></td>
-            <td class="url-cell"><a href="${escHtml(row.URL)}" target="_blank" title="${escHtml(row.URL)}">${escHtml(row.URL)}</a></td>
-            <td style="font-size:0.82rem;">${escHtml(row['Found Keywords'] || '–')}</td>
-        `;
-        tableBody.appendChild(tr);
-    });
+    if (results.length <= _NEWS_PAGE_SIZE) {
+        renderChunk(results, 0);
+    } else {
+        // Render first 300 immediately, stream rest in idle chunks
+        renderChunk(results.slice(0, _NEWS_PAGE_SIZE), 0);
+        let offset = _NEWS_PAGE_SIZE;
+        function streamNext() {
+            if (offset >= results.length) return;
+            const chunk = results.slice(offset, offset + _NEWS_PAGE_SIZE);
+            renderChunk(chunk, offset);
+            offset += _NEWS_PAGE_SIZE;
+            if (offset < results.length) {
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(streamNext, { timeout: 200 });
+                } else {
+                    setTimeout(streamNext, 0);
+                }
+            }
+        }
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(streamNext, { timeout: 200 });
+        } else {
+            setTimeout(streamNext, 0);
+        }
+    }
 }
 
 function downloadCSV() {
