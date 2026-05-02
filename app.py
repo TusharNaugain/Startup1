@@ -21,8 +21,14 @@ from datetime import datetime
 from duckduckgo_search import DDGS
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['Result_FOLDER'] = 'results'
+
+# On serverless platforms (Vercel/AWS Lambda) only /tmp is writable.
+# Detect Vercel via VERCEL env var; otherwise use local project folders.
+_IS_SERVERLESS = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
+_BASE_WRITE_DIR = '/tmp' if _IS_SERVERLESS else os.path.dirname(os.path.abspath(__file__))
+
+app.config['UPLOAD_FOLDER'] = os.path.join(_BASE_WRITE_DIR, 'uploads')
+app.config['Result_FOLDER'] = os.path.join(_BASE_WRITE_DIR, 'results')
 
 # Initialize Link Checker Components
 fetcher = DataFetcher()

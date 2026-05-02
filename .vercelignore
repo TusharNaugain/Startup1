@@ -1,0 +1,27 @@
+# Don't ship local data / dev junk to Vercel
+uploads/
+results/
+output_data/
+input_data/
+__pycache__/
+*.pyc
+.DS_Store
+.git/
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Docker setup not needed on Vercel
+Dockerfile
+docker-compose.yml
+DOCKER_INSTRUCTIONS.md
+Liberty_Docker_Dist/
+publish.sh
+
+# Docs
+*.md
+!README.md
+START_GUIDE.txt
