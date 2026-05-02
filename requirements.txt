@@ -1,11 +1,6 @@
 # ── Core Flask ───────────────────────────────────────────────────────────────
 Flask==3.1.2
 Werkzeug==3.1.5
-Jinja2
-MarkupSafe
-click
-blinker
-itsdangerous
 
 # ── Auth & security ──────────────────────────────────────────────────────────
 Flask-Login==0.6.3
@@ -17,14 +12,8 @@ email-validator==2.2.0
 # ── HTTP / utilities ─────────────────────────────────────────────────────────
 requests
 python-dotenv
-certifi
-charset-normalizer
-idna
-urllib3
-typing_extensions
 python-dateutil
 beautifulsoup4
-soupsieve
 tqdm
 feedparser
 
@@ -36,7 +25,6 @@ duckduckgo-search
 # ── Data / Excel (used directly in app.py routes) ────────────────────────────
 pandas
 openpyxl
-scikit-learn
 
 # ── Firebase ─────────────────────────────────────────────────────────────────
 firebase-admin==7.4.0
