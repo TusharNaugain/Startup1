@@ -28,9 +28,15 @@ soupsieve
 tqdm
 feedparser
 
-# ── link_checker.py dependencies (imported by app.py) ───────────────────────
+# ── link_checker.py / news_extractor.py (both imported by app.py) ────────────
 cloudscraper
 googlenewsdecoder==0.1.7
+duckduckgo-search
+
+# ── Data / Excel (used directly in app.py routes) ────────────────────────────
+pandas
+openpyxl
+scikit-learn
 
 # ── Firebase ─────────────────────────────────────────────────────────────────
 firebase-admin==7.4.0
