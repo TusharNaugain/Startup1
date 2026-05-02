@@ -25,5 +25,4 @@ firebase_credentials.json
 !README.md
 START_GUIDE.txt
 SOP.md
-link_checker.py
 news_extractor.py

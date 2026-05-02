@@ -25,6 +25,12 @@ typing_extensions
 python-dateutil
 beautifulsoup4
 soupsieve
+tqdm
+feedparser
+
+# ── link_checker.py dependencies (imported by app.py) ───────────────────────
+cloudscraper
+googlenewsdecoder==0.1.7
 
 # ── Firebase ─────────────────────────────────────────────────────────────────
 firebase-admin==7.4.0
