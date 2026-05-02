@@ -29,7 +29,7 @@
             <nav class="nav-links">
                 <a href="{{ url_for('home') }}" class="{% if request.path == '/' %}active{% endif %}">
                     <i class="fa-solid fa-compass"></i>
-                    <span>Multi Find Relevant&Irrelevant link</span>
+                    <span>Multi Find Relevant&amp;Irrelevant link</span>
                 </a>
                 <a href="{{ url_for('news_tool') }}" class="{% if request.path == '/news_tool' %}active{% endif %}">
                     <i class="fa-solid fa-rss"></i>
@@ -40,20 +40,6 @@
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Headline Analyzer</span>
                 </a>
-                {% if current_user.is_authenticated and current_user.is_admin %}
-                <a href="{{ url_for('admin.dashboard') }}"
-                    class="{% if request.path.startswith('/admin') %}active{% endif %}">
-                    <i class="fa-solid fa-shield-halved"></i>
-                    <span>Admin</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated %}
-                <a href="{{ url_for('payment.plans') }}"
-                    class="{% if request.path.startswith('/billing') %}active{% endif %}">
-                    <i class="fa-solid fa-bolt"></i>
-                    <span>Upgrade Plan</span>
-                </a>
-                {% endif %}
             </nav>
 
             <!-- ─── Brands Section ─── -->
@@ -70,27 +56,55 @@
                 </div>
             </div>
 
-            <div class="user-profile">
-                {% if current_user.is_authenticated %}
-                <i class="fa-solid fa-user-circle"></i>
-                <div class="user-profile-info">
-                    <div class="user-name">{{ current_user.email }}</div>
-                    <div class="user-tokens">
-                        {% if current_user.plan == 'unlimited' %}
-                        <i class="fa-solid fa-infinity"></i> Unlimited
-                        {% else %}
-                        <i class="fa-solid fa-coins"></i> {{ current_user.tokens_remaining }} tokens
-                        {% endif %}
-                    </div>
-                    <a href="{{ url_for('auth.logout') }}" class="logout-link">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
-                    </a>
-                </div>
-                {% else %}
-                <a href="{{ url_for('auth.login') }}" class="logout-link">
-                    <i class="fa-solid fa-right-to-bracket"></i> Login
+            <!-- ─── Bottom Section: Admin + Upgrade + User ─── -->
+            <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--glass-border);">
+
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('admin.dashboard') }}"
+                    class="{% if request.path.startswith('/admin') %}active{% endif %}"
+                    style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;
+                           text-decoration:none;background:rgba(245,158,11,0.08);
+                           border:1px solid rgba(245,158,11,0.22);margin-bottom:6px;transition:all 0.2s;">
+                    <i class="fa-solid fa-shield-halved" style="color:#f59e0b;font-size:1rem;"></i>
+                    <span style="color:#f59e0b;font-weight:600;font-size:0.82rem;">Admin Panel</span>
+                    <span style="margin-left:auto;background:#f59e0b;color:#000;font-size:0.6rem;
+                                 padding:1px 6px;border-radius:10px;font-weight:700;">ADMIN</span>
                 </a>
                 {% endif %}
+
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('payment.plans') }}"
+                    class="{% if request.path.startswith('/billing') %}active{% endif %}"
+                    style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;
+                           text-decoration:none;background:rgba(0,210,255,0.06);
+                           border:1px solid rgba(0,210,255,0.18);margin-bottom:10px;transition:all 0.2s;">
+                    <i class="fa-solid fa-bolt" style="color:var(--accent-color);font-size:1rem;"></i>
+                    <span style="color:var(--accent-color);font-weight:600;font-size:0.82rem;">Upgrade Plan</span>
+                </a>
+                {% endif %}
+
+                <div class="user-profile" style="margin:0;padding:0;border:none;">
+                    {% if current_user.is_authenticated %}
+                    <i class="fa-solid fa-user-circle"></i>
+                    <div class="user-profile-info">
+                        <div class="user-name">{{ current_user.email }}</div>
+                        <div class="user-tokens">
+                            {% if current_user.plan == 'unlimited' %}
+                            <i class="fa-solid fa-infinity"></i> Unlimited
+                            {% else %}
+                            <i class="fa-solid fa-coins"></i> {{ current_user.tokens_remaining }} tokens
+                            {% endif %}
+                        </div>
+                        <a href="{{ url_for('auth.logout') }}" class="logout-link">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="logout-link">
+                        <i class="fa-solid fa-right-to-bracket"></i> Login
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </aside>
 
