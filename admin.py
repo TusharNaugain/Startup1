@@ -134,8 +134,8 @@ def update_plan():
         tokens = 0
     
     if user_email and plan:
-        from firebase_models import db
-        doc_ref = db.collection('users').document(user_email)
+        from firebase_models import _db
+        doc_ref = _db().collection('users').document(user_email)
         if doc_ref.get().exists:
             doc_ref.update({
                 'plan': plan,
