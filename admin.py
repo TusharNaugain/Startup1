@@ -122,6 +122,31 @@ def users():
     return render_template('admin/users.html', users=all_users)
 
 
+@admin_bp.route('/users/update_plan', methods=['POST'])
+@login_required
+@admin_required
+def update_plan():
+    user_email = request.form.get('email')
+    plan = request.form.get('plan')
+    try:
+        tokens = int(request.form.get('tokens'))
+    except (ValueError, TypeError):
+        tokens = 0
+    
+    if user_email and plan:
+        from firebase_models import db
+        doc_ref = db.collection('users').document(user_email)
+        if doc_ref.get().exists:
+            doc_ref.update({
+                'plan': plan,
+                'tokens_remaining': tokens
+            })
+            flash(f'Updated {user_email} to {plan} plan with {tokens} tokens.', 'success')
+        else:
+            flash(f'User {user_email} not found.', 'error')
+    return redirect(url_for('admin.users'))
+
+
 @admin_bp.route('/tickets')
 @login_required
 @admin_required
