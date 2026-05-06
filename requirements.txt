@@ -20,7 +20,7 @@ feedparser
 # ── link_checker.py / news_extractor.py (both imported by app.py) ────────────
 cloudscraper
 googlenewsdecoder==0.1.7
-ddgs
+duckduckgo-search
 
 # ── Data / Excel (used directly in app.py routes) ────────────────────────────
 pandas
