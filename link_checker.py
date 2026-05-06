@@ -1,5 +1,5 @@
 import requests
-from bs4 import BeautifulSoup
+from scrapling.parser import Selector
 import csv
 import sys
 import os
@@ -102,13 +102,34 @@ class DataFetcher:
 
     def fetch_content(self, url):
         """
-        Fetches the content of the URL using multiple strategies (Requests -> Cloudscraper -> cURL).
+        Fetches the content of the URL using multiple strategies (Scrapling -> Requests -> Cloudscraper -> cURL).
         Returns response object or error string.
         """
         final_url = self.resolve_url(url)
         
+        # 1. Scrapling HTTP Fetcher (Best against Cloudflare/bot protections)
         try:
-            # 1. Try shared session (reused across all URLs for connection pooling)
+            from scrapling import Fetcher
+            import logging
+            logging.getLogger("scrapling").setLevel(logging.ERROR) # suppress configure warning
+            
+            # Scrapling creates stealthy headers and impersonates Chrome natively
+            page = Fetcher(stealthy_headers=True).get(final_url, timeout=10)
+            
+            # Treat empty/suspicious responses as fail so fallbacks can trigger
+            if page.status == 200 and len(page.body) >= 800:
+                class MockResponse:
+                    def __init__(self, p):
+                        self.content = p.body
+                        self.status_code = p.status
+                return MockResponse(page)
+            elif page.status == 404:
+                return f"Error: 404 Not Found"
+        except Exception:
+            pass  # Fallback to requests/cloudscraper
+
+        try:
+            # 2. Try shared session (legacy connection pooling)
             response = self.session.get(final_url, timeout=5, allow_redirects=True)
             
             # Check for suspicious small content (block/JS required)
@@ -167,57 +188,73 @@ class DataProcessor:
     """
     def extract_text(self, html_content):
         """
-        Extracts meaningful text from HTML, removing scripts/styles.
+        Extracts meaningful text from HTML, preferring article body over ads/sidebars.
+        Tries semantic containers (article, main) before falling back to full-page.
         """
         if not html_content:
             return ""
         
-        # Suppress BeautifulSoup UnicodeDammit warnings by decoding explicitly
+        # Decode bytes if needed
         if isinstance(html_content, bytes):
             html_content = html_content.decode('utf-8', errors='replace')
             
-        soup = BeautifulSoup(html_content, 'html.parser')
+        page = Selector(html_content)
         
-        for script in soup(["script", "style"]):
-            script.decompose()
+        # 1. Try <article> tag first — most news sites wrap article body here
+        #    This excludes sidebars, ads, recommended articles, etc.
+        article = page.find('article')
+        if article:
+            art_text = article.get_all_text(separator=' ', strip=True, ignore_tags=('script', 'style'))
+            if len(str(art_text)) > 300:  # Only use if it has meaningful content
+                return ' '.join(str(art_text).split())
         
-        text = soup.get_text(separator=' ')
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = ' '.join(chunk for chunk in chunks if chunk)
+        # 2. Try <main> or role="main" — accessibility-compliant sites use this
+        main = page.find('main') or page.css('[role="main"]').first
+        if main:
+            main_text = main.get_all_text(separator=' ', strip=True, ignore_tags=('script', 'style'))
+            if len(str(main_text)) > 300:
+                return ' '.join(str(main_text).split())
         
-        return text
+        # 3. Full-page fallback: exclude noisy structural elements
+        text = page.get_all_text(
+            separator=' ',
+            strip=True,
+            ignore_tags=('script', 'style', 'nav', 'header', 'footer', 'aside')
+        )
+        return ' '.join(str(text).split())
 
     def analyze_relevance(self, text, main_keywords, context_keywords=None, exclude_keywords=None):
         """
-        Checks if keywords exist in the text using highly optimized pre-filtering.
+        Checks if keywords exist in the text using word-boundary matching.
+        Prevents partial matches like 'SEX' matching 'SENSEX'.
         Returns: Status, Match Count, List of Found Keywords
         """
         text_lower = text if text.islower() else text.lower()
 
-        # 1. Check exclusions first
+        # 1. Check exclusions first (word-boundary)
         if exclude_keywords and len(exclude_keywords) > 0:
             for keyword in exclude_keywords:
                 kw_low = keyword.lower()
-                if kw_low in text_lower:
-                    return "Irrelevant (Excluded)", 0, [keyword]
+                if kw_low in text_lower:  # fast pre-check before regex
+                    if re.search(r'\b' + re.escape(kw_low) + r'\b', text_lower):
+                        return "Irrelevant (Excluded)", 0, [keyword]
 
-        # 2. Check main keywords
+        # 2. Check main keywords (word-boundary)
         found_main = []
         for keyword in main_keywords:
             kw_low = keyword.lower()
-            if kw_low in text_lower:
+            if re.search(r'\b' + re.escape(kw_low) + r'\b', text_lower):
                 found_main.append(keyword)
                 
         if not found_main:
             return "Irrelevant", 0, []
 
-        # 3. Check context keywords
+        # 3. Check context keywords (word-boundary)
         found_context = []
         if context_keywords and len(context_keywords) > 0:
             for keyword in context_keywords:
                 kw_low = keyword.lower()
-                if kw_low in text_lower:
+                if re.search(r'\b' + re.escape(kw_low) + r'\b', text_lower):
                     found_context.append(keyword)
             
             if not found_context:

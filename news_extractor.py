@@ -3,7 +3,7 @@ import urllib.parse
 import requests
 from datetime import datetime, timedelta
 from dateutil import parser
-from bs4 import BeautifulSoup
+from scrapling.parser import Selector
 import concurrent.futures
 import re
 
@@ -24,15 +24,15 @@ def fetch_article_content(url, headers, timeout=8):
     try:
         response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
+        page = Selector(response.content)
         
-        # Remove script and style elements
-        for tag in soup(['script', 'style', 'nav', 'header', 'footer', 'aside']):
-            tag.decompose()
-        
-        # Get text content
-        text = soup.get_text(separator=' ', strip=True)
-        return text.lower()
+        # Get text content, ignoring noisy tags natively
+        text = page.get_all_text(
+            separator=' ',
+            strip=True,
+            ignore_tags=('script', 'style', 'nav', 'header', 'footer', 'aside')
+        )
+        return str(text).lower()
     except Exception as e:
         return ""
 
@@ -109,11 +109,11 @@ def fetch_google_web_news(topic, country="IN", start_date=None, end_date=None):
                 print(f"  ! Web search returned status {resp.status_code}")
                 continue
 
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            page = Selector(resp.text)
 
-            for a_tag in soup.find_all('a', href=True):
+            for a_tag in page.css('a[href]'):
                 href = a_tag['href']
-                text = a_tag.get_text(strip=True)
+                text = str(a_tag.get_all_text(strip=True))
 
                 # Google wraps real results in /url? redirects
                 actual_url = None

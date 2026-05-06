@@ -99,7 +99,7 @@
 
             <label class="s-label" for="subject"><i class="fa-solid fa-tag"></i> &nbsp;Subject</label>
             <input type="text" id="subject" name="subject" class="s-input"
-                   placeholder="e.g. OTP not received, results incorrect, page not loading…" required maxlength="200">
+                   placeholder="e.g. OTP not received, results incorrect, page not loading…" required maxlength="200" value="{{ request.args.get('subject', '') }}">
 
             <label class="s-label" for="message"><i class="fa-solid fa-message"></i> &nbsp;Describe your issue</label>
             <textarea id="message" name="message" class="s-input"

@@ -1,0 +1,1652 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* Workspace Tabs */
+.workspace-tabs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    box-shadow: none;
+    transform: none;
+}
+
+.tab-btn:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary);
+    box-shadow: none;
+    transform: none;
+}
+
+.tab-btn.active {
+    background: rgba(0, 210, 255, 0.1);
+    color: var(--accent-color);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.tool-section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tool-section.active {
+    display: block;
+}
+</style>
+
+<div class="workspace-tabs">
+    <button class="tab-btn active" onclick="switchTool('multifind', this)"><i class="fa-solid fa-compass"></i> Link Checker</button>
+    <button class="tab-btn" onclick="switchTool('news', this)"><i class="fa-solid fa-rss"></i> News Extractor</button>
+    <button class="tab-btn" onclick="switchTool('headline', this)"><i class="fa-solid fa-chart-line"></i> Headline Analyzer</button>
+</div>
+
+<!-- MULTIFIND TOOL -->
+<div id="tool-multifind" class="tool-section active">
+
+<style>
+    /* ─── Multifind Keyword Table ─── */
+    .multifind-wrapper {
+        margin-bottom: 30px;
+    }
+
+    .mf-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 6px;
+        table-layout: fixed;
+    }
+
+    /* Column widths */
+    .mf-table col.col-brand-name {
+        width: 16%;
+    }
+
+    .mf-table col.col-lock {
+        width: 44px;
+    }
+
+    .mf-table col.col-brand-kw {
+        width: 21%;
+    }
+
+    .mf-table col.col-must-have {
+        width: 27%;
+    }
+
+    .mf-table col.col-shouldnt {
+        width: 28%;
+    }
+
+    .mf-table col.col-actions {
+        width: 40px;
+    }
+
+    .mf-table thead th {
+        padding: 8px 10px;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: transparent;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .mf-table thead th.col-center {
+        text-align: center;
+    }
+
+    .mf-table tbody tr {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+
+    .mf-table tbody tr:hover {
+        background: rgba(0, 210, 255, 0.05);
+    }
+
+    .mf-table tbody td {
+        padding: 6px 6px;
+        border-top: 1px solid transparent;
+        border-bottom: 1px solid transparent;
+        vertical-align: middle;
+    }
+
+    /* First and last cell rounded corners */
+    .mf-table tbody td:first-child {
+        border-radius: 10px 0 0 10px;
+        padding-left: 10px;
+    }
+
+    .mf-table tbody td:last-child {
+        border-radius: 0 10px 10px 0;
+        padding-right: 8px;
+    }
+
+    /* Cell labels above inputs */
+    .cell-label {
+        font-size: 0.65rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 2px;
+        display: block;
+    }
+
+    /* Input styling inside table cells */
+    .mf-input {
+        width: 100%;
+        padding: 7px 10px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.82rem;
+        font-family: 'Outfit', sans-serif;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .mf-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 8px rgba(0, 210, 255, 0.2);
+    }
+
+    /* Locked state – read-only display */
+    .mf-input[readonly] {
+        background: transparent;
+        border-color: transparent;
+        color: var(--text-primary);
+        cursor: default;
+        box-shadow: none;
+        padding-left: 2px;
+    }
+
+    /* Brand name in locked state gets accent highlight */
+    .mf-input.brand-name-input[readonly] {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.88rem;
+    }
+
+    /* Must-have pill display */
+    .pill-display {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        min-height: 30px;
+        padding: 2px 0;
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 20px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        white-space: nowrap;
+        margin: 1px 0;
+    }
+
+    .pill-blue {
+        background: rgba(0, 210, 255, 0.15);
+        color: var(--accent-color);
+        border: 1px solid rgba(0, 210, 255, 0.3);
+    }
+
+    .pill-red {
+        background: rgba(255, 107, 107, 0.15);
+        color: var(--danger-color);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    /* Lock / Settings buttons – override global button styles */
+    .icon-btn {
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 0 !important;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        border-radius: 8px;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s, background 0.2s, border-color 0.2s;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .icon-btn:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-primary);
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .icon-btn.locked {
+        background: rgba(0, 210, 255, 0.15) !important;
+        border-color: rgba(0, 210, 255, 0.4) !important;
+        color: var(--accent-color);
+    }
+
+    /* Delete button */
+    .icon-btn.delete-btn:hover {
+        color: var(--danger-color) !important;
+        background: rgba(255, 107, 107, 0.12) !important;
+        border-color: rgba(255, 107, 107, 0.3) !important;
+    }
+
+    /* Add Row Footer */
+    .mf-add-row td {
+        padding: 8px 0;
+        border-top: 1px solid var(--glass-border);
+    }
+
+    .add-row-btn {
+        background: none;
+        border: none;
+        color: var(--accent-color);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 4px;
+        transition: opacity 0.2s;
+        box-shadow: none;
+        transform: none;
+    }
+
+    .add-row-btn:hover {
+        opacity: 0.75;
+        transform: none;
+        box-shadow: none;
+        background: none;
+    }
+
+    /* Links section */
+    .links-section {
+        margin-bottom: 24px;
+    }
+
+    /* Results */
+    .results-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    /* Narrower glass panel for this tool */
+    .multifind-panel {
+        max-width: 1100px;
+    }
+
+    /* Scroll wrapper for the keyword table */
+    .mf-table-scroll {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+        padding: 4px 8px 8px;
+        background: rgba(0, 0, 0, 0.15);
+    }
+
+    /* Selected row highlight */
+    .mf-table tbody tr.is-analyzing {
+        background: rgba(0, 210, 255, 0.07);
+    }
+</style>
+
+<div class="analytics-container">
+    <div class="glass-panel multifind-panel">
+        <header>
+            <div class="logo" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px;">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Multifind Logo" style="max-height: 48px;">
+                <h1 style="margin: 0;">Multi<span>find</span></h1>
+            </div>
+            <p class="subtitle" style="margin: 0;">Configure keyword rules per brand, then analyze links in bulk.</p>
+        </header>
+
+        <!-- ─── Keyword Rules ─── -->
+        <div class="multifind-wrapper">
+            <div class="results-summary"
+                style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <p style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; margin: 0;">
+                    Note: Brand Keyword is the match keyword. Separate multiple with commas.
+                </p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <!-- CSV Keyword Import -->
+                    <button class="secondary-btn" onclick="document.getElementById('mfKwCsvInput').click()"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(124,58,237,0.4); color: #a78bfa;"
+                        title="Upload a CSV with one keyword per row — each becomes a new rule box">
+                        <i class="fa-solid fa-file-csv"></i> Import Keywords CSV
+                    </button>
+                    <input type="file" id="mfKwCsvInput" accept=".csv" style="display:none" onchange="importKeywordsCsv(this)">
+                    <button class="secondary-btn" onclick="saveCurrentSetup()"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(0,210,255,0.4); color: var(--accent-color);">
+                        <i class="fa-solid fa-bookmark"></i> Save as Config
+                    </button>
+                    <button class="secondary-btn" onclick="addRuleBox()" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <i class="fa-solid fa-plus"></i> Add Another Rule
+                    </button>
+                    <button class="secondary-btn" onclick="clearAllRules()"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,107,107,0.35); color:#ff6b6b;"
+                        title="Remove all brand rules">
+                        <i class="fa-solid fa-trash-can"></i> Clear All Rules
+                    </button>
+                </div>
+            </div>
+            <!-- CSV import status bar -->
+            <div id="mfCsvImportStatus" style="display:none;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:8px 14px;font-size:0.82rem;color:#a78bfa;margin-bottom:10px;">
+                <i class="fa-solid fa-circle-info"></i> <span id="mfCsvImportMsg"></span>
+                <button onclick="document.getElementById('mfCsvImportStatus').style.display='none'" style="float:right;background:none;border:none;color:#a78bfa;cursor:pointer;font-size:0.9rem;">✕</button>
+            </div>
+
+            <div id="keywordRulesContainer">
+
+
+
+                <!-- Initial Rule Box -->
+                <div class="single-brand-row rule-box" data-locked="false">
+
+                    <!-- Brand Keyword -->
+                    <div class="mf-field-group" style="flex: 1;">
+                        <label class="cell-label">Brand Keyword</label>
+                        <div class="input-with-lock">
+                            <input type="text" class="mf-input single-input brandKeyword" placeholder="e.g. Zoya">
+                            <button class="icon-btn single-lock-btn lockBtn" onclick="toggleLockBox(this)"
+                                title="Lock/Unlock fields">
+                                <i class="fa-solid fa-unlock"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Must Have -->
+                    <div class="mf-field-group" style="flex: 1.2;">
+                        <label class="cell-label">Must Have - Keywords</label>
+                        <div class="field-container mustHaveContainer">
+                            <input type="text" class="mf-input single-input mustHave" placeholder="e.g. Titan, Jewelry">
+                        </div>
+                    </div>
+
+                    <!-- Shouldn't Have -->
+                    <div class="mf-field-group" style="flex: 1.5;">
+                        <label class="cell-label">Shouldn't Have Keywords</label>
+                        <div class="field-container shouldntHaveContainer">
+                            <input type="text" class="mf-input single-input shouldntHave" placeholder="e.g. Imran">
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mf-field-group" style="justify-content: flex-end; padding-bottom: 2px;">
+                        <button class="icon-btn delete-btn" onclick="deleteRuleBox(this)" title="Delete rule"
+                            style="height: 35px; width: 35px; min-width: 35px; background: rgba(255,0,0,0.05) !important;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Input Mode Tabs ─── -->
+        <div style="margin-bottom: 16px;">
+            <div style="display:flex; gap:6px; border-bottom:1px solid var(--glass-border); padding-bottom:2px;">
+                <button id="tabUrlBtn" onclick="switchTab('url')" style="background:none;border:none;padding:7px 16px;font-size:0.83rem;font-weight:600;
+                           color:var(--accent-color);border-bottom:2px solid var(--accent-color);
+                           cursor:pointer;font-family:'Outfit',sans-serif;">
+                    <i class="fa-solid fa-link"></i> Paste URLs
+                </button>
+                <button id="tabCsvBtn" onclick="switchTab('csv')" style="background:none;border:none;padding:7px 16px;font-size:0.83rem;font-weight:600;
+                           color:var(--text-secondary);border-bottom:2px solid transparent;
+                           cursor:pointer;font-family:'Outfit',sans-serif;">
+                    <i class="fa-solid fa-file-csv"></i> Upload CSV (YouTube / Share of Voice)
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab 1: URL Paste -->
+        <div id="tabUrlPanel">
+            <div class="links-section">
+                <div class="form-group">
+                    <label for="links" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="fa-solid fa-link"></i> Paste Links (One per line)</span>
+                        <button onclick="document.getElementById('links').value=''"
+                            style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.35);
+                                   color:#ff6b6b;padding:3px 10px;border-radius:6px;font-size:0.72rem;
+                                   font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;">
+                            <i class="fa-solid fa-trash-can"></i> Clear URLs
+                        </button>
+                    </label>
+                    <textarea id="links" rows="5"
+                        placeholder="https://example.com&#10;https://another-article.com"></textarea>
+                </div>
+            </div>
+            <div class="action-bar">
+                <button id="analyzeBtn" onclick="analyzeLinks()">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span class="btn-text">Analyze</span>
+                </button>
+                <div id="loader" class="loader hidden"></div>
+                <span id="progressText" style="color: var(--text-secondary); font-size: 0.85rem; display:none;"></span>
+            </div>
+        </div>
+
+        <!-- Tab 2: CSV Upload -->
+        <div id="tabCsvPanel" style="display:none;">
+            <div class="links-section">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-file-csv"></i> Upload YouTube / Share of Voice CSV</label>
+                    <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:10px;">
+                        CSV must have columns: <strong>URL</strong>, <strong>Headline</strong>, <strong>Youtube Channel
+                            Name</strong>.
+                        Keyword rules above will be applied to Headline + Channel Name directly — no fetching needed.
+                    </p>
+                    <div id="csvDropZone" style="border:2px dashed var(--glass-border);border-radius:12px;padding:28px 20px;
+                               text-align:center;cursor:pointer;transition:border-color 0.2s;
+                               background:rgba(0,0,0,0.1);" onclick="document.getElementById('csvFileInput').click()"
+                        ondragover="event.preventDefault();this.style.borderColor='var(--accent-color)'"
+                        ondragleave="this.style.borderColor='var(--glass-border)'" ondrop="handleCsvDrop(event)">
+                        <i class="fa-solid fa-cloud-upload-alt"
+                            style="font-size:1.8rem;color:var(--accent-color);margin-bottom:8px;"></i>
+                        <p style="color:var(--text-secondary);margin:0;font-size:0.85rem;" id="csvDropText">Click to
+                            browse or drag & drop your CSV here</p>
+                    </div>
+                    <input type="file" id="csvFileInput" accept=".csv" style="display:none"
+                        onchange="onCsvFileSelect(this)">
+                </div>
+            </div>
+            <div class="action-bar">
+                <button id="analyzeCsvBtn" onclick="analyzeCsv()">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Analyze CSV</span>
+                </button>
+                <div id="csvLoader" class="loader hidden"></div>
+                <span id="csvProgressText" style="color:var(--text-secondary);font-size:0.85rem;display:none;"></span>
+            </div>
+        </div>
+
+        <script>
+            // ── Tab switcher ──
+            function switchTab(tab) {
+                const isUrl = tab === 'url';
+                document.getElementById('tabUrlPanel').style.display = isUrl ? '' : 'none';
+                document.getElementById('tabCsvPanel').style.display = isUrl ? 'none' : '';
+                const accentStyle = 'color:var(--accent-color);border-bottom:2px solid var(--accent-color);';
+                const inactiveStyle = 'color:var(--text-secondary);border-bottom:2px solid transparent;';
+                document.getElementById('tabUrlBtn').style.cssText += isUrl ? accentStyle : inactiveStyle;
+                document.getElementById('tabCsvBtn').style.cssText += isUrl ? inactiveStyle : accentStyle;
+            }
+
+            let _csvFile = null;
+            function onCsvFileSelect(input) {
+                if (input.files && input.files[0]) {
+                    _csvFile = input.files[0];
+                    document.getElementById('csvDropText').textContent = '✅ ' + _csvFile.name;
+                }
+            }
+            function handleCsvDrop(e) {
+                e.preventDefault();
+                document.getElementById('csvDropZone').style.borderColor = 'var(--glass-border)';
+                const f = e.dataTransfer.files[0];
+                if (f && f.name.endsWith('.csv')) {
+                    _csvFile = f;
+                    document.getElementById('csvDropText').textContent = '✅ ' + f.name;
+                } else {
+                    alert('Please drop a .csv file');
+                }
+            }
+
+            async function analyzeCsv() {
+                if (!_csvFile) { alert('Please select a CSV file first.'); return; }
+
+                const configs = getAllConfigs();
+                if (!configs.length) { alert('Please add at least one keyword rule.'); return; }
+
+                const btn = document.getElementById('analyzeCsvBtn');
+                const ldr = document.getElementById('csvLoader');
+                const prog = document.getElementById('csvProgressText');
+
+                // Swap button to spinner state
+                const originalBtnHTML = btn.innerHTML;
+                btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px;">
+                    <span style="width:18px;height:18px;border:3px solid rgba(255,255,255,0.3);border-top-color:#fff;
+                        border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;flex-shrink:0;"></span>
+                    Analyzing CSV...
+                </span>`;
+                btn.disabled = true;
+                prog.style.display = 'none';
+
+                const form = new FormData();
+                form.append('csv_file', _csvFile);
+                form.append('configs', JSON.stringify(configs));
+
+                try {
+                    const resp = await fetch('/analyze_csv', { method: 'POST', body: form });
+                    
+                    if (resp.status === 402) {
+                        if (typeof showPaywallModal === 'function') {
+                            showPaywallModal();
+                        } else {
+                            alert('Out of tokens. Please upgrade your plan.');
+                        }
+                        return;
+                    }
+
+                    if (!resp.ok) throw new Error(await resp.text());
+                    const data = await resp.json();
+                    globalResults = data.results || [];
+                    renderTable(globalResults);
+                    document.getElementById('resultsPanel').classList.remove('hidden');
+                    prog.style.display = 'inline';
+                    prog.textContent = `✓ Done! Found ${globalResults.filter(r => r.Status.startsWith('Relevant')).length} relevant result(s).`;
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                    prog.textContent = '';
+                } finally {
+                    btn.innerHTML = originalBtnHTML;
+                    btn.disabled = false;
+                    ldr.classList.add('hidden');
+                }
+            }
+        </script>
+
+
+        <!-- ─── Results ─── -->
+        <section id="resultsPanel" class="results-panel hidden">
+            <div class="results-summary">
+                <h3><i class="fa-solid fa-check-circle" style="color:var(--success-color);"></i> Results</h3>
+                <button class="secondary-btn" onclick="downloadCSV()">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+            </div>
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Brand Name</th>
+                            <th>Status</th>
+                            <th>URL</th>
+                            <th>Matched Keywords</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+</div>
+</div>
+
+<!-- NEWS EXTRACTOR TOOL -->
+<div id="tool-news" class="tool-section">
+
+<style>
+    .news-panel {
+        max-width: 1100px;
+    }
+
+    /* ── Hero header ── */
+    .news-hero {
+        background: linear-gradient(135deg, rgba(0, 210, 255, 0.08) 0%, rgba(124, 58, 237, 0.08) 100%);
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 22px 26px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+
+    .news-hero-icon {
+        width: 52px;
+        height: 52px;
+        background: linear-gradient(135deg, var(--accent-color), #7c3aed);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .news-hero h1 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .news-hero p {
+        margin: 4px 0 0;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    /* ── Card sections ── */
+    .config-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin-bottom: 16px;
+    }
+
+    .card-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .card-label i {
+        color: var(--accent-color);
+    }
+
+    /* ── Tag input ── */
+    .tag-input-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 10px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        min-height: 46px;
+        align-items: center;
+        cursor: text;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .tag-input-wrapper:focus-within {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(0, 210, 255, 0.15);
+    }
+
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px 4px 12px;
+        background: rgba(0, 210, 255, 0.12);
+        border: 1px solid rgba(0, 210, 255, 0.3);
+        border-radius: 20px;
+        font-size: 0.79rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        white-space: nowrap;
+        animation: popIn 0.15s ease;
+    }
+
+    @keyframes popIn {
+        from {
+            transform: scale(0.8);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .tag-chip-remove {
+        background: none;
+        border: none;
+        color: var(--accent-color);
+        cursor: pointer;
+        font-size: 0.68rem;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.6;
+        transition: opacity 0.15s;
+    }
+
+    .tag-chip-remove:hover {
+        opacity: 1;
+    }
+
+    .tag-real-input {
+        flex: 1;
+        min-width: 120px;
+        background: none;
+        border: none;
+        outline: none;
+        color: var(--text-primary);
+        font-size: 0.84rem;
+        font-family: 'Outfit', sans-serif;
+        padding: 2px 4px;
+    }
+
+    .tag-real-input::placeholder {
+        color: var(--text-secondary);
+        opacity: 0.6;
+    }
+
+    /* ── CSV drop zone ── */
+    .kw-csv-zone {
+        border: 2px dashed var(--glass-border);
+        border-radius: 10px;
+        padding: 14px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        background: rgba(0, 0, 0, 0.08);
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .kw-csv-zone:hover,
+    .kw-csv-zone.drag-over {
+        border-color: var(--accent-color);
+        background: rgba(0, 210, 255, 0.04);
+    }
+
+    .kw-csv-zone span {
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+    }
+
+    /* ── Options row ── */
+    .options-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+    }
+
+    @media (max-width: 700px) {
+        .options-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .opt-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    /* ── Fetch button ── */
+    .fetch-btn-wrap {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 6px 0;
+    }
+
+    #fetchNewsBtn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 28px;
+        font-size: 0.93rem;
+        background: linear-gradient(135deg, var(--accent-color), #0099cc);
+        border: none;
+        border-radius: 12px;
+        color: #000;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.15s;
+        box-shadow: 0 4px 16px rgba(0, 210, 255, 0.3);
+    }
+
+    #fetchNewsBtn:hover:not(:disabled) {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    #fetchNewsBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* ── Progress ── */
+    .progress-wrap {
+        flex: 1;
+        display: none;
+    }
+
+    .progress-label {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+    }
+
+    .progress-bar-bg {
+        height: 5px;
+        background: rgba(255, 255, 255, 0.07);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--accent-color), #7c3aed);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    /* ── Results panel ── */
+    .results-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .results-meta h3 {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .count-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        background: rgba(0, 210, 255, 0.15);
+        border: 1px solid rgba(0, 210, 255, 0.3);
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--accent-color);
+        margin-left: 8px;
+    }
+
+    .kw-summary-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .kw-badge-item {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(124, 58, 237, 0.15);
+        color: #a78bfa;
+        border: 1px solid rgba(124, 58, 237, 0.3);
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 14px;
+        padding: 12px 16px;
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+    }
+
+    .filter-bar .mf-input {
+        max-width: 240px;
+    }
+
+    /* ── News table ── */
+    #newsTable {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 4px;
+        font-size: 0.83rem;
+    }
+
+    #newsTable thead th {
+        padding: 8px 12px;
+        font-size: 0.69rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--glass-border);
+        text-align: left;
+    }
+
+    #newsTable tbody tr {
+        background: rgba(255, 255, 255, 0.025);
+        transition: background 0.15s;
+    }
+
+    #newsTable tbody tr:hover {
+        background: rgba(0, 210, 255, 0.05);
+    }
+
+    #newsTable tbody td {
+        padding: 10px 12px;
+        vertical-align: middle;
+    }
+
+    #newsTable tbody td:first-child {
+        border-radius: 8px 0 0 8px;
+    }
+
+    #newsTable tbody td:last-child {
+        border-radius: 0 8px 8px 0;
+    }
+
+    .kw-chip {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.71rem;
+        font-weight: 600;
+        background: rgba(124, 58, 237, 0.15);
+        color: #a78bfa;
+        border: 1px solid rgba(124, 58, 237, 0.3);
+    }
+
+    .open-link {
+        color: var(--accent-color);
+        font-size: 0.8rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.15s;
+    }
+
+    .open-link:hover {
+        opacity: 0.7;
+    }
+</style>
+
+<div class="analytics-container">
+    <div class="glass-panel news-panel">
+
+        <!-- Hero -->
+        <div class="news-hero">
+            <div class="news-hero-icon"><i class="fa-solid fa-rss"></i></div>
+            <div>
+                <h1>News <span>Extractor</span></h1>
+                <p>Multi-keyword RSS + Google Web Intelligence — fetch and export news articles in bulk.</p>
+            </div>
+        </div>
+
+        <!-- Keywords Card -->
+        <div class="config-card">
+            <div class="card-label" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>
+                    <i class="fa-solid fa-tags"></i> Keywords / Topics
+                    <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-secondary); font-size:0.71rem; margin-left:4px;">
+                        — press <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-size:0.75rem;">Enter</kbd>
+                        or <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-size:0.75rem;">,</kbd> after each
+                    </span>
+                </span>
+                <button id="clearAllKwBtn" onclick="clearAllKeywords()"
+                    style="display:none;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.35);
+                           color:#ff6b6b;padding:4px 12px;border-radius:6px;font-size:0.72rem;
+                           font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;
+                           transition:all 0.2s;align-items:center;gap:5px;">
+                    <i class="fa-solid fa-trash-can"></i> Clear All
+                </button>
+            </div>
+            <div class="tag-input-wrapper" id="keywordTagBox"
+                onclick="document.getElementById('keywordRawInput').focus()">
+                <input type="text" id="keywordRawInput" class="tag-real-input"
+                    placeholder="e.g. Tata Trust, PRADAN, CSR India …">
+            </div>
+
+            <!-- CSV drop -->
+            <div class="kw-csv-zone" id="kwCsvZone" onclick="document.getElementById('kwCsvInput').click()"
+                ondragover="event.preventDefault();this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')" ondrop="handleKwCsvDrop(event)">
+                <i class="fa-solid fa-file-csv" style="color:var(--accent-color); font-size:1.2rem;"></i>
+                <span id="kwCsvLabel">Or drag &amp; drop a CSV file (one keyword per row)</span>
+            </div>
+            <input type="file" id="kwCsvInput" accept=".csv" style="display:none" onchange="onKwCsvSelect(this)">
+        </div>
+
+        <!-- Options Card -->
+        <div class="config-card">
+            <div class="card-label"><i class="fa-solid fa-sliders"></i> Options</div>
+            <div class="options-grid">
+                <div>
+                    <span class="opt-label"><i class="fa-solid fa-earth-americas"></i> Country</span>
+                    <select id="newsCountry" class="mf-input" style="width:100%;">
+                        <option value="IN" selected>India (IN)</option>
+                        <option value="US">United States (US)</option>
+                        <option value="GB">United Kingdom (GB)</option>
+                        <option value="AE">UAE (AE)</option>
+                        <option value="SG">Singapore (SG)</option>
+                        <option value="AU">Australia (AU)</option>
+                        <option value="CA">Canada (CA)</option>
+                        <option value="ZA">South Africa (ZA)</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="opt-label"><i class="fa-solid fa-calendar-day"></i> Start Date (After)</span>
+                    <input type="date" id="startDate" class="mf-input" style="width:100%;">
+                </div>
+                <div>
+                    <span class="opt-label"><i class="fa-solid fa-calendar-check"></i> End Date (Before)</span>
+                    <input type="date" id="endDate" class="mf-input" style="width:100%;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Fetch Button -->
+        <div class="fetch-btn-wrap">
+            <button id="fetchNewsBtn" onclick="fetchNews()">
+                <i class="fa-solid fa-cloud-arrow-down"></i> Fetch Articles
+            </button>
+            <div class="progress-wrap" id="progressWrapOuter">
+                <div class="progress-label" id="newsStatusText"></div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="newsProgressBar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <section id="newsResultsPanel" class="hidden" style="margin-top:28px;">
+            <div class="results-meta">
+                <div>
+                    <h3><i class="fa-solid fa-newspaper" style="color:var(--accent-color);"></i>
+                        Results <span class="count-badge" id="articleCount">0</span>
+                    </h3>
+                    <div class="kw-summary-row" id="newsSummaryRow"></div>
+                </div>
+                <button class="secondary-btn" onclick="downloadNewsCSV()">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+            </div>
+
+            <div class="filter-bar">
+                <input type="text" id="newsSearchFilter" class="mf-input" placeholder="🔍 Search title / source…"
+                    oninput="applyNewsFilter()">
+                <select id="newsKwFilter" class="mf-input" onchange="applyNewsFilter()">
+                    <option value="">All Keywords</option>
+                </select>
+            </div>
+
+            <div
+                style="overflow-x:auto; border-radius:12px; border:1px solid var(--glass-border); padding:4px 8px 8px; background:rgba(0,0,0,0.12);">
+                <table id="newsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Keyword</th>
+                            <th>Source</th>
+                            <th style="min-width:260px;">Title</th>
+                            <th>Link</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<script>
+    let globalNewsResults = [];
+    let newsKeywords = [];
+
+    /* ── Tag input ── */
+    function addNewsKeyword(kw) {
+        kw = kw.trim();
+        if (!kw || newsKeywords.some(k => k.toLowerCase() === kw.toLowerCase())) return;
+        newsKeywords.push(kw);
+        renderKeywordChips();
+    }
+    function removeNewsKeyword(idx) { newsKeywords.splice(idx, 1); renderKeywordChips(); }
+    function clearAllKeywords() {
+        newsKeywords = [];
+        renderKeywordChips();
+        document.getElementById('keywordRawInput').focus();
+    }
+    function renderKeywordChips() {
+        const box   = document.getElementById('keywordTagBox');
+        const input = document.getElementById('keywordRawInput');
+        const btn   = document.getElementById('clearAllKwBtn');
+        box.querySelectorAll('.tag-chip').forEach(c => c.remove());
+        newsKeywords.forEach((kw, i) => {
+            const chip = document.createElement('span');
+            chip.className = 'tag-chip';
+            chip.innerHTML = `${escHtml(kw)} <button class="tag-chip-remove" onclick="removeNewsKeyword(${i})" title="Remove"><i class="fa-solid fa-xmark"></i></button>`;
+            box.insertBefore(chip, input);
+        });
+        if (btn) btn.style.display = newsKeywords.length > 0 ? 'inline-flex' : 'none';
+    }
+    document.getElementById('keywordRawInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const val = this.value.replace(/,$/, '').trim();
+            if (val) addNewsKeyword(val);
+            this.value = '';
+        } else if (e.key === 'Backspace' && !this.value && newsKeywords.length) {
+            removeNewsKeyword(newsKeywords.length - 1);
+        }
+    });
+    document.getElementById('keywordRawInput').addEventListener('paste', function (e) {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        text.split(/[,\n]+/).forEach(k => { if (k.trim()) addNewsKeyword(k.trim()); });
+        this.value = '';
+    });
+
+    /* ── CSV ── */
+    function handleKwCsvDrop(e) {
+        e.preventDefault();
+        document.getElementById('kwCsvZone').classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if (f) loadKwCsvFile(f);
+    }
+    function onKwCsvSelect(input) { if (input.files && input.files[0]) loadKwCsvFile(input.files[0]); }
+    function parseCsvFirstColumn(text) {
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        const lines = text.split(/\r?\n/);
+        const firstLine = lines.find(l => l.trim()) || '';
+        let delim = ',';
+        if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) delim = ';';
+        const results = [];
+        lines.forEach((line, idx) => {
+            if (!line.trim()) return;
+            const fields = []; let cur = '', inQ = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (inQ) { if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') { inQ = false; } else { cur += ch; } }
+                else { if (ch === '"') { inQ = true; } else if (ch === delim) { fields.push(cur); cur = ''; } else { cur += ch; } }
+            }
+            fields.push(cur);
+            const kw = (fields[0] || '').trim();
+            if (!kw) return;
+            if (idx === 0 && /keyword|topic|name|search|term|query/i.test(kw)) return;
+            results.push(kw);
+        });
+        return results;
+    }
+    function loadKwCsvFile(file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const keywords = parseCsvFirstColumn(e.target.result);
+            let added = 0;
+            keywords.forEach(kw => { addNewsKeyword(kw); added++; });
+            document.getElementById('kwCsvLabel').textContent = `✅ ${file.name} — ${added} keyword${added !== 1 ? 's' : ''} loaded`;
+        };
+        reader.readAsText(file);
+    }
+
+    /* ── Main fetch ── */
+    async function fetchNews() {
+        const rawInput = document.getElementById('keywordRawInput');
+        if (rawInput.value.trim()) { addNewsKeyword(rawInput.value.trim()); rawInput.value = ''; }
+        if (!newsKeywords.length) { alert('Please add at least one keyword/topic.'); return; }
+
+        const country = document.getElementById('newsCountry').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const btn = document.getElementById('fetchNewsBtn');
+        const status = document.getElementById('newsStatusText');
+        const progWrap = document.getElementById('progressWrapOuter');
+        const progBar = document.getElementById('newsProgressBar');
+        const panel = document.getElementById('newsResultsPanel');
+        const tbody = document.querySelector('#newsTable tbody');
+        const countBadge = document.getElementById('articleCount');
+
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = `<span style="width:16px;height:16px;border:2.5px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;"></span> Fetching…`;
+        btn.disabled = true;
+        panel.classList.add('hidden');
+        tbody.innerHTML = '';
+        globalNewsResults = [];
+        progWrap.style.display = 'flex';
+        progBar.style.width = '0%';
+        status.textContent = 'Starting…';
+
+        const total = newsKeywords.length;
+        const allArticles = [];
+        const seenLinks = new Set();
+
+        for (let i = 0; i < total; i++) {
+            const kw = newsKeywords[i];
+            status.textContent = `Fetching "${kw}" … (${i + 1}/${total})`;
+            progBar.style.width = `${Math.round((i / total) * 100)}%`;
+
+            try {
+                const resp = await fetch('/api/fetch_news', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic: kw, country, start_date: startDate || null, end_date: endDate || null })
+                });
+                if (resp.status === 402) {
+                    if (typeof showPaywallModal === 'function') showPaywallModal();
+                    else alert('Out of tokens. Please upgrade your plan.');
+                    status.textContent = 'Stopped — out of tokens.';
+                    break;
+                }
+                const data = await resp.json();
+                if (data.error) { console.warn(`Error for "${kw}":`, data.error); continue; }
+                (data.articles || []).forEach(art => {
+                    const norm = (art.Link || '').toLowerCase().replace(/\/$/, '');
+                    if (!norm || seenLinks.has(norm)) return;
+                    seenLinks.add(norm);
+                    allArticles.push({ ...art, _keyword: kw });
+                });
+            } catch (err) { console.error(`Fetch error for "${kw}":`, err); }
+        }
+
+        progBar.style.width = '100%';
+        allArticles.sort((a, b) => {
+            const da = a.Published ? new Date(a.Published) : new Date(0);
+            const db = b.Published ? new Date(b.Published) : new Date(0);
+            return db - da;
+        });
+        globalNewsResults = allArticles;
+        countBadge.textContent = globalNewsResults.length;
+        buildKwFilterDropdown();
+        renderNewsTable(globalNewsResults);
+        renderNewsSummary();
+        panel.classList.remove('hidden');
+        status.textContent = `✓ Done — ${globalNewsResults.length} unique article(s) across ${total} keyword(s).`;
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
+        setTimeout(() => { progWrap.style.display = 'none'; }, 1500);
+    }
+
+    /* ── Helpers ── */
+    function buildKwFilterDropdown() {
+        const sel = document.getElementById('newsKwFilter');
+        sel.innerHTML = '<option value="">All Keywords</option>';
+        [...new Set(globalNewsResults.map(a => a._keyword))].filter(Boolean).forEach(kw => {
+            const opt = document.createElement('option');
+            opt.value = kw;
+            opt.textContent = `${kw} (${globalNewsResults.filter(a => a._keyword === kw).length})`;
+            sel.appendChild(opt);
+        });
+    }
+    function renderNewsSummary() {
+        const row = document.getElementById('newsSummaryRow');
+        const kwCounts = {};
+        globalNewsResults.forEach(a => { kwCounts[a._keyword] = (kwCounts[a._keyword] || 0) + 1; });
+        row.innerHTML = Object.entries(kwCounts).map(([kw, cnt]) =>
+            `<span class="kw-badge-item"><i class="fa-solid fa-tag" style="font-size:0.65rem;margin-right:3px;"></i>${escHtml(kw)}: ${cnt}</span>`
+        ).join('');
+    }
+    function applyNewsFilter() {
+        const text = document.getElementById('newsSearchFilter').value.toLowerCase();
+        const kwFilt = document.getElementById('newsKwFilter').value;
+        const filtered = globalNewsResults.filter(a => {
+            const matchKw = !kwFilt || a._keyword === kwFilt;
+            const matchText = !text || (a.Title || '').toLowerCase().includes(text) || (a.Source || '').toLowerCase().includes(text);
+            return matchKw && matchText;
+        });
+        renderNewsTable(filtered);
+        document.getElementById('articleCount').textContent = filtered.length;
+    }
+    function renderNewsTable(articles) {
+        const tbody = document.querySelector('#newsTable tbody');
+        tbody.innerHTML = '';
+        if (!articles.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px;">No results found.</td></tr>';
+            return;
+        }
+        const frag = document.createDocumentFragment();
+        articles.forEach(row => {
+            const tr = document.createElement('tr');
+            let dateStr = '—';
+            try { dateStr = row.Published ? new Date(row.Published).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; } catch (e) { }
+            tr.innerHTML = `
+            <td style="white-space:nowrap;font-size:0.8rem;color:var(--text-secondary);">${dateStr}</td>
+            <td><span class="kw-chip">${escHtml(row._keyword || '—')}</span></td>
+            <td style="font-size:0.8rem;">${escHtml(row.Source || '—')}</td>
+            <td style="font-size:0.83rem;line-height:1.4;">${escHtml(row.Title || '—')}</td>
+            <td><a href="${row.Link}" target="_blank" rel="noopener" class="open-link">Open ↗</a></td>
+        `;
+            frag.appendChild(tr);
+        });
+        tbody.appendChild(frag);
+    }
+    function downloadNewsCSV() {
+        if (!globalNewsResults.length) return;
+        let csv = 'Published Date,Keyword,Source,Title,URL\n';
+        globalNewsResults.forEach(row => {
+            const title = (row.Title || '').replace(/"/g, '""');
+            const src = (row.Source || '').replace(/"/g, '""');
+            const kw = (row._keyword || '').replace(/"/g, '""');
+            csv += `"${row.Published}","${kw}","${src}","${title}","${row.Link}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'news_report.csv';
+        link.click();
+    }
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    document.addEventListener('DOMContentLoaded', () => { });
+</script>
+</div>
+
+<!-- HEADLINE ANALYZER TOOL -->
+<div id="tool-headline" class="tool-section">
+
+<style>
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        flex-direction: column;
+    }
+
+    .loader {
+        border: 5px solid var(--bg-secondary);
+        border-top: 5px solid var(--accent-color);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+
+    .loading-text {
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 500;
+        letter-spacing: 1px;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<!-- Loading Screen -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loader"></div>
+    <div class="loading-text">Analyzing Headlines...</div>
+    <div style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9rem;">Processing your data</div>
+</div>
+
+<div class="analytics-container">
+    <div class="glass-panel">
+        <header>
+            <div class="logo">
+                <h1>Headline <span>Analyzer</span></h1>
+            </div>
+            <p class="subtitle">Identify recurring and unique headlines from your CSV data.</p>
+        </header>
+
+        <form action="{{ url_for('process_headlines') }}" method="post" enctype="multipart/form-data" id="analyzerForm">
+            <div class="form-group">
+                <label for="csv_file">Upload File (CSV or Excel)</label>
+                <input type="file" id="csv_file" name="csv_file" accept=".csv, .xlsx, .xls" required>
+            </div>
+
+            <div class="form-group" style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="top_n">Quantity of Top Headlines</label>
+                    <input type="number" id="top_n" name="top_n" value="50" min="1" required>
+                    <small style="color: var(--text-secondary);">How many results to show?</small>
+                </div>
+                <div style="flex: 1;">
+                    <label for="min_freq">Minimum Repetitions</label>
+                    <input type="number" id="min_freq" name="min_freq" value="1" min="1" required>
+                    <small style="color: var(--text-secondary);">Show headlines appearing at least this many
+                        times.</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="sheet_name">Select Sheet</label>
+                <select id="sheet_name" name="sheet_name"
+                    style="width:100%;padding:15px;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);
+                           border-radius:12px;color:#fff;font-size:1rem;font-family:'Outfit',sans-serif;cursor:pointer;">
+                    <option value="">Upload a file to see available sheets...</option>
+                </select>
+                <small style="color: var(--text-secondary);">Select which sheet to analyze from the uploaded
+                    file.</small>
+            </div>
+
+            <div class="action-bar">
+                <button type="submit" id="analyzeBtn">
+                    <i class="fa-solid fa-chart-pie"></i> Analyze Headlines
+                </button>
+            </div>
+        </form>
+
+        {% if result %}
+        <div class="results-panel">
+            <div class="results-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Analysis Results</h3>
+                <button onclick="exportTableToCSV('top_headlines.csv')" class="export-btn"
+                    style="background: var(--accent-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Headline</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if result.top %}
+                        {% for row in result.top %}
+                        <tr>
+                            <td>{{ row.headline }}</td>
+                            <td>{{ row.count }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="2">No headlines found matching criteria.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="results-panel">
+            <h3 style="color: var(--danger-color);">Error: {{ error }}</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Loading State Handler
+    const form = document.getElementById('analyzerForm');
+    const overlay = document.getElementById('loadingOverlay');
+    const fileInput = document.getElementById('csv_file');
+    const sheetSelect = document.getElementById('sheet_name');
+
+    if (form) {
+        form.addEventListener('submit', function () {
+            // Show loading overlay
+            overlay.style.display = 'flex';
+        });
+    }
+
+    // Hide loader if page is restored from cache (back button)
+    window.addEventListener('pageshow', function (event) {
+        overlay.style.display = 'none';
+    });
+
+    // Dynamic Sheet Fetching
+    if (fileInput && sheetSelect) {
+        fileInput.addEventListener('change', async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Clear existing options and show loading state
+            sheetSelect.innerHTML = '<option value="">Loading sheets...</option>';
+            sheetSelect.disabled = true;
+
+            // Check if it's an Excel file
+            const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+
+            if (!isExcel) {
+                // For CSV files, sheet selection is irrelevant
+                sheetSelect.innerHTML = '<option value="">N/A (CSV file)</option>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/get_sheets', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.status === 402) {
+                    if (typeof showPaywallModal === 'function') {
+                        showPaywallModal();
+                    } else {
+                        alert('Out of tokens. Please upgrade your plan.');
+                    }
+                    progressContainer.style.display = 'none';
+                    return;
+                }
+
+                const data = await response.json();
+
+                sheetSelect.innerHTML = ''; // clear loading text
+
+                if (data.sheets && data.sheets.length > 0) {
+                    data.sheets.forEach(sheet => {
+                        const option = document.createElement('option');
+                        option.value = sheet;
+                        option.textContent = sheet;
+                        sheetSelect.appendChild(option);
+                    });
+                    sheetSelect.disabled = false;
+                } else {
+                    sheetSelect.innerHTML = '<option value="">No sheets found</option>';
+                }
+
+            } catch (error) {
+                console.error("Error fetching sheets:", error);
+                sheetSelect.innerHTML = '<option value="">Error loading sheets. Defaulting to first sheet.</option>';
+                sheetSelect.disabled = false;
+            }
+        });
+    }
+
+    // Export Table to CSV
+    function downloadCSV(csv, filename) {
+        let csvFile;
+        let downloadLink;
+
+        // CSV file
+        csvFile = new Blob([csv], { type: "text/csv" });
+
+        // Download link
+        downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+
+    function exportTableToCSV(filename) {
+        let csv = [];
+        let rows = document.querySelectorAll(".table-wrapper table tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+
+            for (let j = 0; j < cols.length; j++)
+                // Escape quotes and commas in strings
+                row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
+
+            csv.push(row.join(","));
+        }
+
+        // Download CSV file
+        downloadCSV(csv.join("\n"), filename);
+    }
+</script>
+</div>
+
+<script>
+function switchTool(toolId, btnElement) {
+    // Hide all tools
+    document.querySelectorAll('.tool-section').forEach(el => el.classList.remove('active'));
+    // Show target tool
+    document.getElementById('tool-' + toolId).classList.add('active');
+    
+    // Update buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    btnElement.classList.add('active');
+    
+    // Update URL hash without reloading (optional, helps with refreshes)
+    window.location.hash = toolId;
+}
+
+// Check hash on load
+document.addEventListener("DOMContentLoaded", () => {
+    const hash = window.location.hash.substring(1);
+    if(hash && document.getElementById('tool-' + hash)) {
+        const btnIndex = ['multifind', 'news', 'headline'].indexOf(hash);
+        if(btnIndex !== -1) {
+            const btns = document.querySelectorAll('.tab-btn');
+            if(btns[btnIndex]) switchTool(hash, btns[btnIndex]);
+        }
+    }
+});
+</script>
+{% endblock %}

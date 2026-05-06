@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Affiliate Program - Multifind | Earn 30% Recurring Commission{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Join the Multifind Affiliate Program and earn a 30% lifetime recurring commission for referring PR agencies and digital marketers.">
+<link rel="canonical" href="https://multifind.com/affiliates">
+{% endblock %}
+
+{% block content %}
+<style>
+    .affiliate-hero {
+        text-align: center;
+        padding: 60px 20px 40px;
+    }
+    .affiliate-hero h1 {
+        font-size: 3.5rem;
+        margin-bottom: 20px;
+        background: linear-gradient(90deg, #fff, #a0a0a0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    .affiliate-hero p {
+        font-size: 1.2rem;
+        color: var(--text-secondary);
+        max-width: 650px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+    
+    .benefits-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto 60px;
+        padding: 0 20px;
+    }
+    .benefit-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 30px;
+        text-align: left;
+        transition: transform 0.3s ease, background 0.3s ease;
+    }
+    .benefit-card:hover {
+        transform: translateY(-8px);
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(0, 210, 255, 0.3);
+    }
+    .benefit-icon {
+        font-size: 2.5rem;
+        color: var(--accent-color);
+        margin-bottom: 20px;
+    }
+    .benefit-card h3 {
+        font-size: 1.3rem;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+    }
+    .benefit-card p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .how-it-works {
+        max-width: 1000px;
+        margin: 0 auto 80px;
+        padding: 40px;
+        background: rgba(0, 210, 255, 0.03);
+        border: 1px solid rgba(0, 210, 255, 0.15);
+        border-radius: 24px;
+    }
+    .how-it-works h2 {
+        text-align: center;
+        font-size: 2.2rem;
+        color: var(--text-primary);
+        margin-bottom: 40px;
+    }
+    .steps-container {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 30px;
+    }
+    .step-item {
+        flex: 1;
+        min-width: 250px;
+        text-align: center;
+    }
+    .step-number {
+        width: 50px;
+        height: 50px;
+        background: var(--accent-gradient);
+        color: #fff;
+        font-size: 1.5rem;
+        font-weight: 700;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4);
+    }
+    .step-item h4 {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+        color: var(--text-primary);
+    }
+    .step-item p {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .cta-section {
+        text-align: center;
+        margin-bottom: 80px;
+    }
+    .btn-apply {
+        display: inline-block;
+        background: var(--accent-gradient);
+        color: #fff;
+        padding: 18px 45px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.2rem;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 25px rgba(0, 210, 255, 0.3);
+    }
+    .btn-apply:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(0, 210, 255, 0.4);
+    }
+</style>
+
+<main>
+    <section class="affiliate-hero">
+        <h1>Partner With Multifind</h1>
+        <p>Join the industry's most rewarding affiliate program. Refer PR agencies, marketers, and brands to our platform and earn a massive 30% lifetime recurring commission.</p>
+    </section>
+
+    <!-- Benefits Grid -->
+    <section class="benefits-grid">
+        <div class="benefit-card">
+            <div class="benefit-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <h3>30% Recurring Commission</h3>
+            <p>Earn 30% of the revenue every month for the lifetime of the customer you refer. Your passive income grows as they stay.</p>
+        </div>
+        <div class="benefit-card">
+            <div class="benefit-icon"><i class="fa-solid fa-cookie-bite"></i></div>
+            <h3>60-Day Cookie Window</h3>
+            <p>We use a generous 60-day tracking cookie. If your referral visits but doesn't buy immediately, you still get paid when they convert later.</p>
+        </div>
+        <div class="benefit-card">
+            <div class="benefit-icon"><i class="fa-solid fa-bolt"></i></div>
+            <h3>High Conversion Rate</h3>
+            <p>Our powerful bulk scanning engine solves a massive pain point for PR teams, resulting in high conversion and retention rates.</p>
+        </div>
+        <div class="benefit-card">
+            <div class="benefit-icon"><i class="fa-brands fa-paypal"></i></div>
+            <h3>Fast, Reliable Payouts</h3>
+            <p>Get paid on time, every time. We support global payouts via PayPal or direct bank transfer on the 15th of every month.</p>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <h2>How It Works</h2>
+        <div class="steps-container">
+            <div class="step-item">
+                <div class="step-number">1</div>
+                <h4>Apply & Get Approved</h4>
+                <p>Fill out our simple application. Once approved, you'll get access to your personalized dashboard and tracking links.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-number">2</div>
+                <h4>Share With Your Audience</h4>
+                <p>Use our provided assets to promote Multifind on your blog, YouTube channel, newsletter, or social media.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-number">3</div>
+                <h4>Start Earning</h4>
+                <p>When someone clicks your link and subscribes, you earn 30% of their subscription fee—every single month!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <a href="{{ url_for('support.index', subject='Affiliate Program Application') }}" class="btn-apply">Apply to the Program Now</a>
+        <p style="margin-top: 15px; color: var(--text-secondary); font-size: 0.9rem;">Takes less than 2 minutes to apply. Requires login.</p>
+    </section>
+</main>
+{% endblock %}

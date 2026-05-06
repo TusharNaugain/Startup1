@@ -15,6 +15,7 @@ import re
 import io
 from datetime import datetime, timedelta
 from duckduckgo_search import DDGS
+from scrapling.parser import Selector
 
 from extensions import login_manager, csrf, limiter, mail, init_firebase
 from tokens import consume_token
@@ -97,19 +98,30 @@ processor = DataProcessor()
 
 
 @app.route('/')
+@app.route('/workspace')
 @login_required
-def home():
-    return render_template('index.html')
+def workspace():
+    return render_template('workspace.html')
 
 @app.route('/news_tool')
 @login_required
 def news_tool():
-    return render_template('news_extractor.html')
+    # Redirect legacy route to new SPA tab
+    return redirect(url_for('workspace') + '#news')
 
 @app.route('/headline_tool')
 @login_required
 def headline_tool():
-    return render_template('headline_analyzer.html')
+    # Redirect legacy route to new SPA tab
+    return redirect(url_for('workspace') + '#headline')
+
+@app.route('/pricing')
+def pricing():
+    return render_template('pricing.html')
+
+@app.route('/affiliates')
+def affiliates():
+    return render_template('affiliates.html')
 
 @app.route('/download/<path:filename>')
 @login_required
@@ -280,6 +292,17 @@ def analyze():
         cfg["_excl_patterns"] = [
             (kw, re.compile(r'\b' + re.escape(kw) + r'\b')) for kw in excl_clean
         ]
+        # Pre-compile brand + must-have patterns for word-boundary matching
+        # Prevents 'SEX' matching 'SENSEX', 'BANK' matching 'BANKRUPT', etc.
+        cfg["_kw_patterns"] = [
+            (kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE))
+            for kw in cfg["keywords"]
+        ]
+        must_clean = [kw.strip() for kw in cfg.get("mustHave", []) if kw.strip()]
+        cfg["_must_patterns"] = [
+            (kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE))
+            for kw in must_clean
+        ]
 
     results = []
     
@@ -305,54 +328,81 @@ def analyze():
     return jsonify({"results": results})
 
 
+
 def deep_verify_link(url, keywords):
     """
-    Fallback method: Uses DuckDuckGo to check if the URL is associated with the keyword
-    in the search index. This helps when the page content is blocked/unreachable.
+    Fallback: Uses DuckDuckGo to verify if a blocked/JS-rendered URL is relevant
+    to the given keywords. Tries multiple search strategies in order of reliability.
     """
     try:
-        from duckduckgo_search import DDGS
-        # Strategy: Search for the URL itself. 
-        # If it's indexed, the snippet usually contains key info.
+        from ddgs import DDGS
+    except ImportError:
         try:
-            results = DDGS().text(url, max_results=1)
-            
-            if results:
-                 res = results[0]
-                 # Check if result is actually for our URL (or close enough)
-                 if url in res['href'] or res['href'] in url:
-                     body_lower = res['body'].lower()
-                     title_lower = res['title'].lower()
-                     
-                     found_keywords = []
-                     for kw in keywords:
-                         if kw.lower() in body_lower or kw.lower() in title_lower:
-                             found_keywords.append(kw)
-                     
-                     if found_keywords:
-                         return True, found_keywords
-        except Exception:
-            pass # Strategy 1 failed, try next
-        
-        # secondary strategy: site:domain keyword
-        # (Only if first strategy failed)
-        try:
-            from urllib.parse import urlparse
-            domain = urlparse(url).netloc
-            if keywords and len(keywords) > 0:
-                query = f"{keywords[0]} site:{domain}"
-                results = DDGS().text(query, max_results=3)
+            from duckduckgo_search import DDGS
+        except ImportError:
+            return False, []
+
+    from urllib.parse import urlparse, urlunparse
+
+    # Strip tracking params (ocid, cvid, ei) to get a clean URL for matching
+    parsed = urlparse(url)
+    clean_url = urlunparse(parsed._replace(query='', fragment=''))
+
+    # Extract a human-readable title from the URL slug for better search context.
+    # Use the LONGEST path segment — article title slugs are long descriptive strings
+    # (e.g. "vijay-s-tvk-emerges-as-giant-slayer-..."), while IDs are short ("ar-AA22qcLJ").
+    # Using path_parts[-1] was WRONG for MSN which appends a short article ID at the end.
+    path_parts = [p for p in parsed.path.strip('/').split('/') if p]
+    slug = max(path_parts, key=len) if path_parts else ''
+    # Convert slug like "bjp-wins-election" → "bjp wins election"
+    slug_text = slug.replace('-', ' ').replace('_', ' ')
+
+    domain = parsed.netloc  # e.g. www.msn.com
+
+    def _check_results(results, kws):
+        """Word-boundary keyword check in DDG snippets. 'SEX' won't match 'SENSEX'."""
+        found = []
+        for res in results:
+            combined = (res.get('title', '') + ' ' + res.get('body', '')).lower()
+            for kw in kws:
+                if kw not in found:
+                    if re.search(r'\b' + re.escape(kw.lower()) + r'\b', combined):
+                        found.append(kw)
+        return found
+
+    try:
+        ddgs = DDGS()
+
+        # Strategy 1: Search the article title (slug) WITHOUT the keyword.
+        # This finds the actual article as indexed, then checks if keyword
+        # appears naturally in those results.
+        # e.g. slug = "vijay-s-tvk-emerges-as-giant-slayer..." → search that title
+        # Then "BJP" appears in results → Relevant. "sex" doesn't → Irrelevant.
+        if slug_text:
+            try:
+                results = ddgs.text(slug_text[:80], max_results=15)
                 if results:
-                    for res in results:
-                        if url in res['href'] or res['href'] in url:
-                             return True, [keywords[0]]
+                    found = _check_results(results, keywords)
+                    if found:
+                        return True, found
+            except Exception:
+                pass
+
+        # Strategy 2: Search the exact clean URL (works when article IS indexed directly)
+        try:
+            results = ddgs.text(clean_url, max_results=5)
+            if results:
+                found = _check_results(results, keywords)
+                if found:
+                    return True, found
         except Exception:
             pass
-            
+
     except Exception as e:
         print(f"Deep Verification Error for {url}: {e}")
-        
+
     return False, []
+
 
 # Platforms where page body is completely JS-gated — skip fetch, check URL only.
 # NOTE: YouTube is intentionally EXCLUDED here because YouTube URLs (watch?v=ID)
@@ -375,20 +425,20 @@ def _extract_youtube_meta(response_content):
     """
     try:
         import json as _json
-        soup = BeautifulSoup(response_content, 'html.parser')
+        page = Selector(response_content)
         parts = []
 
         # 1. Open Graph meta tags
         for prop in ('og:title', 'og:description', 'og:video:tag'):
-            tag = soup.find('meta', property=prop)
+            tag = page.find('meta', {'property': prop})
             if tag and tag.get('content'):
                 parts.append(tag['content'])
 
         # 2. Channel / author name from JSON-LD (schema.org VideoObject)
         #    YouTube injects this as <script type="application/ld+json">
-        for script in soup.find_all('script', type='application/ld+json'):
+        for script in page.find_all('script', {'type': 'application/ld+json'}):
             try:
-                data = _json.loads(script.string or '')
+                data = _json.loads(script.text or '')
                 # Can be a list or a single object
                 items = data if isinstance(data, list) else [data]
                 for item in items:
@@ -406,9 +456,9 @@ def _extract_youtube_meta(response_content):
                 pass
 
         # 3. <title> tag as final fallback
-        title_tag = soup.find('title')
-        if title_tag and title_tag.string:
-            parts.append(title_tag.string)
+        title_tag = page.find('title')
+        if title_tag and title_tag.text:
+            parts.append(str(title_tag.text))
 
         combined = ' '.join(parts).lower()
         return combined
@@ -455,15 +505,17 @@ def process_single_link(url, configs, deep_verify=False):
                 current_status = "Irrelevant (Excluded)"
                 current_count, current_found = 0, []
             else:
-                # Brand keyword check against title/description
-                found_brand_kws = [kw for kw in keywords if kw.lower() in search_text]
+                # Brand keyword check — word-boundary so 'SEX' won't match 'SENSEX'
+                kw_pats = cfg.get("_kw_patterns") or [(kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)) for kw in keywords]
+                found_brand_kws = [kw for kw, pat in kw_pats if pat.search(search_text)]
                 if not found_brand_kws:
                     current_status = "Irrelevant"
                     current_count, current_found = 0, []
                 else:
                     # Must-have check (OR logic — any one match passes)
-                    if context_keywords:
-                        found_must = [kw for kw in context_keywords if kw.lower() in search_text]
+                    must_pats = cfg.get("_must_patterns") or [(kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)) for kw in context_keywords]
+                    if must_pats:
+                        found_must = [kw for kw, pat in must_pats if pat.search(search_text)]
                         if not found_must:
                             current_status = "Irrelevant (Context Missing)"
                             current_count  = len(found_brand_kws)
@@ -504,7 +556,8 @@ def process_single_link(url, configs, deep_verify=False):
                 current_status = "Irrelevant (Excluded)"
                 current_count, current_found = 0, []
             else:
-                found_brand_kws = [kw for kw in keywords if kw.lower() in url_lower]
+                kw_pats = cfg.get("_kw_patterns") or [(kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)) for kw in keywords]
+                found_brand_kws = [kw for kw, pat in kw_pats if pat.search(url_lower)]
                 if not found_brand_kws:
                     current_status = "Irrelevant"
                     current_count, current_found = 0, []
@@ -582,31 +635,34 @@ def process_single_link(url, configs, deep_verify=False):
                 if not context_keywords:
                     has_must_have = True
                 else:
-                    for kw in context_keywords:
-                        if kw.lower() in text_lower or kw.lower() in html_lower:
+                    # Must-have: word-boundary match — 'BANK' won't match 'BANKRUPT'
+                    must_pats = cfg.get("_must_patterns") or [(kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)) for kw in context_keywords]
+                    for kw, pat in must_pats:
+                        if pat.search(text_lower) or pat.search(html_lower):
                             found_context_kws.append(kw)
                     if found_context_kws:
                         has_must_have = True
                 
-                # 3. Brand Check (Body, HTML, URL)
+                # 3. Brand Check (Body, HTML, URL) — word-boundary so 'SEX' won't match 'SENSEX'
                 brand_match_source = None
                 found_brand_kws = []
-                
-                for kw in keywords:
-                    if kw.lower() in text_lower:
+                kw_pats = cfg.get("_kw_patterns") or [(kw, re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)) for kw in keywords]
+
+                for kw, pat in kw_pats:
+                    if pat.search(text_lower):
                         found_brand_kws.append(kw)
                 
                 if found_brand_kws:
                     brand_match_source = "Body"
                 else:
-                    for kw in keywords:
-                        if kw.lower() in html_lower:
+                    for kw, pat in kw_pats:
+                        if pat.search(html_lower):
                             found_brand_kws.append(kw)
                     if found_brand_kws:
                         brand_match_source = "HTML Match"
                     else:
-                        for kw in keywords:
-                            if kw.lower() in url_lower:
+                        for kw, pat in kw_pats:
+                            if pat.search(url_lower):
                                 found_brand_kws.append(kw)
                         if found_brand_kws:
                             brand_match_source = "URL Match"
@@ -617,8 +673,18 @@ def process_single_link(url, configs, deep_verify=False):
                     current_count = 0
                     current_found = []
                     
-                    # Fallback 3: Deep Verification (Search Engine Check)
-                    if deep_verify:
+                    # Auto-trigger DuckDuckGo fallback when site is blocked (e.g. MSN, paywalled sites)
+                    if is_blocked:
+                        is_verified, verified_kws = deep_verify_link(url, keywords)
+                        if is_verified:
+                            current_count = len(verified_kws)
+                            current_found = verified_kws
+                            current_status = "Relevant (Verified via Search - Site Blocked)"
+                        else:
+                            # DDG couldn't confirm either way — site is blocked, can't read content
+                            current_status = "Blocked - Verify Manually"
+                    # Fallback: Explicit deep verify mode
+                    elif deep_verify:
                         is_verified, verified_kws = deep_verify_link(url, keywords)
                         if is_verified:
                             current_count = len(verified_kws)

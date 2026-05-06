@@ -13,14 +13,14 @@ email-validator==2.2.0
 requests
 python-dotenv
 python-dateutil
-beautifulsoup4
+scrapling
 tqdm
 feedparser
 
 # ── link_checker.py / news_extractor.py (both imported by app.py) ────────────
 cloudscraper
 googlenewsdecoder==0.1.7
-duckduckgo-search
+ddgs
 
 # ── Data / Excel (used directly in app.py routes) ────────────────────────────
 pandas
