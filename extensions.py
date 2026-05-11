@@ -17,7 +17,14 @@ from flask_limiter.util import get_remote_address
 # ── Flask extensions ──────────────────────────────────────────────────────────
 login_manager = LoginManager()
 csrf          = CSRFProtect()
-limiter       = Limiter(key_func=get_remote_address, default_limits=["200 per hour"])
+# Use Redis if Railway provides REDIS_URL, otherwise fall back to in-memory.
+# Explicitly setting storage_uri suppresses the Flask-Limiter production warning.
+_limiter_storage = os.environ.get("REDIS_URL", "memory://")
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per hour"],
+    storage_uri=_limiter_storage,
+)
 # mail removed — email now handled by Resend HTTP API (emailer.py)
 
 login_manager.login_view         = 'auth.login'
