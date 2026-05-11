@@ -1,7 +1,8 @@
 """Shared Flask extension instances — Firebase edition.
 
-SQLAlchemy and Bcrypt removed; Firebase Admin SDK handles persistence.
-Flask-Login, Flask-Limiter, and Flask-Mail are kept.
+SQLAlchemy, Bcrypt, and Flask-Mail removed.
+Firebase Admin SDK handles persistence; Resend HTTP API handles email.
+Flask-Login and Flask-Limiter are kept.
 """
 import os
 import json
@@ -12,13 +13,12 @@ from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_mail import Mail
 
 # ── Flask extensions ──────────────────────────────────────────────────────────
 login_manager = LoginManager()
 csrf          = CSRFProtect()
 limiter       = Limiter(key_func=get_remote_address, default_limits=["200 per hour"])
-mail          = Mail()
+# mail removed — email now handled by Resend HTTP API (emailer.py)
 
 login_manager.login_view         = 'auth.login'
 login_manager.login_message      = 'Please log in to access this page.'

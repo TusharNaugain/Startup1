@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from duckduckgo_search import DDGS
 from scrapling.parser import Selector
 
-from extensions import login_manager, csrf, limiter, mail, init_firebase
+from extensions import login_manager, csrf, limiter, init_firebase
 from tokens import consume_token
 
 app = Flask(__name__)
@@ -44,7 +44,7 @@ app.config.update(
 # Admin email — whoever signs up with this address gets is_admin=True
 app.config['ADMIN_EMAIL'] = os.environ.get('ADMIN_EMAIL', 'naugaintushar@gmail.com')
 
-# SMTP — used to email the admin when a payment is submitted
+# Email — sent via Resend HTTP API (see emailer.py). Set RESEND_API_KEY + MAIL_FROM in Vercel env vars.
 app.config['MAIL_SERVER']  = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT']    = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
@@ -69,7 +69,7 @@ os.makedirs(app.config['PAYMENT_SCREENSHOT_FOLDER'], exist_ok=True)
 login_manager.init_app(app)
 csrf.init_app(app)
 limiter.init_app(app)
-mail.init_app(app)
+# mail.init_app(app)  # Removed — email now sent via Resend HTTP API in emailer.py
 
 # Firebase
 with app.app_context():
@@ -98,6 +98,11 @@ processor = DataProcessor()
 
 
 @app.route('/')
+def index():
+    # If the user is already logged in, we can optionally redirect them to workspace, 
+    # but since it's a public landing page with SEO, we'll just serve it.
+    return render_template('landing.html')
+
 @app.route('/workspace')
 @login_required
 def workspace():
