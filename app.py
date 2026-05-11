@@ -858,5 +858,6 @@ def process_headlines():
         return render_template('headline_analyzer.html', error=str(e))
 
 if __name__ == '__main__':
-    # Host 0.0.0.0 is required for Docker containers to be accessible from outside
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Only enable debug mode locally. In production gunicorn is used (see Procfile / railway.toml).
+    _debug = os.environ.get('FLASK_ENV', 'production') == 'development'
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=_debug)
