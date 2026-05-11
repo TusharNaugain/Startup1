@@ -6,8 +6,7 @@ from flask import (
 from flask_login import login_required, current_user
 from extensions import limiter
 from firebase_models import create_ticket, get_tickets_for_user
-from emailer import _mail_configured, _safe_send
-from flask_mail import Message
+from emailer import _mail_configured, _safe_send  # Resend HTTP API — no flask_mail needed
 
 support_bp = Blueprint('support', __name__, url_prefix='/support')
 
@@ -45,7 +44,7 @@ def _notify_admin_new_ticket(user_email, subject, message, ticket_id):
     from flask import current_app
     if not _mail_configured():
         return
-    admin_email = current_app.config.get('ADMIN_EMAIL')
+    admin_email = current_app.config.get('ADMIN_EMAIL') or __import__('os').environ.get('ADMIN_EMAIL')
     if not admin_email:
         return
     try:
@@ -54,10 +53,7 @@ def _notify_admin_new_ticket(user_email, subject, message, ticket_id):
     except Exception:
         admin_url = '/admin/tickets'
 
-    msg = Message(
-        subject=f'[Multi Find Relevance] Support ticket from {user_email}',
-        recipients=[admin_email],
-        body=f"""New support ticket submitted.
+    body = f"""New support ticket submitted.
 
 From:    {user_email}
 Subject: {subject}
@@ -67,5 +63,8 @@ Subject: {subject}
 ---
 View all tickets: {admin_url}
 """
+    _safe_send(
+        to=admin_email,
+        subject=f'[Multi Find Relevance] Support ticket from {user_email}',
+        body=body,
     )
-    _safe_send(msg)
