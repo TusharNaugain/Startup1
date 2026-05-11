@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+
+{% block title %}Multifind - Advanced PR & Media Keyword Monitoring Platform{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Multifind is an advanced AI-driven PR and media monitoring platform. Extract news, analyze headlines, and bulk check links for brand reputation management.">
+<meta name="keywords" content="PR monitoring, Media Keyword Analysis, Bulk Link Checker, News Extractor, Share of Voice, Brand Reputation Management">
+<link rel="canonical" href="https://multifind.com/">
+{% endblock %}
+
+{% block content %}
+<style>
+    /* ─── BASE ANIMATIONS & FX ─── */
+    @keyframes fadeUp {
+        0% { opacity: 0; transform: translateY(50px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes float {
+        0% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(2deg); }
+        100% { transform: translateY(0px) rotate(0deg); }
+    }
+    @keyframes pulseGlow {
+        0% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.4); }
+        70% { box-shadow: 0 0 0 20px rgba(0, 210, 255, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0); }
+    }
+    @keyframes scrollMarquee {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+
+    .reveal {
+        opacity: 0;
+        animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .delay-1 { animation-delay: 0.15s; }
+    .delay-2 { animation-delay: 0.3s; }
+    .delay-3 { animation-delay: 0.45s; }
+
+    /* ─── HERO SECTION ─── */
+    .hero-section {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 120px 20px 40px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Complex Background Mesh */
+    .hero-bg {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-image: 
+            radial-gradient(at 0% 0%, rgba(0, 210, 255, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(124, 58, 237, 0.15) 0px, transparent 50%);
+        z-index: -2;
+    }
+    .grid-overlay {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+        -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+        z-index: -1;
+    }
+
+    .hero-content {
+        max-width: 1000px;
+        z-index: 1;
+        margin-bottom: 60px;
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 18px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 40px;
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 30px;
+        backdrop-filter: blur(10px);
+    }
+    .hero-badge span {
+        background: var(--accent-gradient);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .hero-title {
+        font-size: clamp(3rem, 6vw, 5.5rem);
+        font-weight: 800;
+        line-height: 1.05;
+        margin-bottom: 24px;
+        color: #fff;
+    }
+    .hero-title span.gradient-text {
+        background: linear-gradient(135deg, #00d2ff 0%, #7c3aed 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        max-width: 700px;
+        margin: 0 auto 40px;
+        line-height: 1.6;
+    }
+
+    .hero-cta {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+    }
+    .btn-primary-large {
+        background: var(--accent-gradient);
+        color: #fff;
+        padding: 16px 40px;
+        border-radius: 14px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s;
+        animation: pulseGlow 2s infinite;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-primary-large:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px rgba(0, 210, 255, 0.4);
+    }
+
+    /* Mockup Showcase */
+    .hero-mockup-wrapper {
+        position: relative;
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        perspective: 1000px;
+    }
+    .hero-mockup {
+        width: 100%;
+        border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 40px 100px rgba(0,0,0,0.8), 0 0 80px rgba(0, 210, 255, 0.15);
+        animation: float 8s ease-in-out infinite;
+        /* Slight 3D tilt */
+        transform: rotateX(5deg);
+        transition: transform 0.5s;
+    }
+    .hero-mockup-wrapper:hover .hero-mockup {
+        transform: rotateX(0deg) scale(1.02);
+    }
+
+    /* ─── TRUSTED BY MARQUEE ─── */
+    .trusted-section {
+        padding: 60px 0;
+        border-bottom: 1px solid var(--glass-border);
+        overflow: hidden;
+        background: rgba(0,0,0,0.2);
+    }
+    .trusted-text {
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 30px;
+    }
+    .marquee-container {
+        display: flex;
+        width: 200%;
+        animation: scrollMarquee 20s linear infinite;
+    }
+    .marquee-content {
+        display: flex;
+        justify-content: space-around;
+        width: 50%;
+        align-items: center;
+    }
+    .marquee-content span {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.3);
+        font-family: 'Outfit', sans-serif;
+    }
+
+    /* ─── BENTO BOX FEATURES ─── */
+    .bento-section {
+        padding: 120px 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .section-header {
+        text-align: center;
+        margin-bottom: 80px;
+    }
+    .section-header h2 {
+        font-size: 3rem;
+        color: #fff;
+        margin-bottom: 20px;
+    }
+    .section-header p {
+        color: var(--text-secondary);
+        font-size: 1.2rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .bento-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-auto-rows: minmax(300px, auto);
+        gap: 24px;
+    }
+    .bento-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 30px;
+        padding: 40px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s;
+        backdrop-filter: blur(20px);
+    }
+    .bento-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(0, 210, 255, 0.3);
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+    /* Grid Spanning */
+    .card-large { grid-column: span 2; }
+    .card-tall { grid-row: span 2; }
+    
+    .bento-icon {
+        width: 50px; height: 50px;
+        background: rgba(0, 210, 255, 0.1);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--accent-color);
+        font-size: 1.5rem;
+        margin-bottom: 24px;
+    }
+    .bento-card h3 {
+        font-size: 1.8rem;
+        color: #fff;
+        margin-bottom: 16px;
+    }
+    .bento-card p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    /* Abstract UI decorations inside bento cards */
+    .faux-ui-bar {
+        margin-top: 30px;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        gap: 12px;
+    }
+    .faux-pill {
+        height: 8px; border-radius: 4px;
+        background: var(--accent-gradient);
+    }
+
+    /* ─── BOTTOM CTA ─── */
+    .bottom-cta {
+        margin: 0 20px 100px;
+        padding: 80px 20px;
+        background: linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+        border: 1px solid rgba(0,210,255,0.2);
+        border-radius: 40px;
+        text-align: center;
+    }
+    .bottom-cta h2 { font-size: 3rem; color: #fff; margin-bottom: 24px; }
+
+    @media (max-width: 900px) {
+        .bento-grid { grid-template-columns: 1fr; }
+        .card-large { grid-column: span 1; }
+        .hero-title { font-size: 3rem; }
+    }
+</style>
+
+<main>
+    <!-- Background Effects -->
+    <div class="hero-bg"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-badge reveal">
+                <span>New</span> AI-Powered Media Intelligence Engine
+            </div>
+            <h1 class="hero-title reveal delay-1">
+                Dominate Your Brand's Narrative with <br><span class="gradient-text">Absolute Precision</span>
+            </h1>
+            <p class="hero-subtitle reveal delay-2">
+                The ultimate workspace for PR agencies. Instantly bulk-analyze links, extract global news intelligence, and audit Share of Voice with our hyper-fast SaaS platform.
+            </p>
+            <div class="hero-cta reveal delay-3">
+                <a href="{{ url_for('workspace') }}" class="btn-primary-large">Start Monitoring Now <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
+            </div>
+        </div>
+
+        <!-- Dashboard Mockup Image -->
+        <div class="hero-mockup-wrapper reveal delay-3">
+            <img src="{{ url_for('static', filename='dashboard_mockup.png') }}" alt="Multifind Dashboard Mockup" class="hero-mockup">
+        </div>
+    </section>
+
+    <!-- Trusted By Marquee -->
+    <section class="trusted-section">
+        <div class="trusted-text">Trusted by Forward-Thinking PR Teams Worldwide</div>
+        <div class="marquee-container">
+            <div class="marquee-content">
+                <span>ApexMedia</span>
+                <span>Nexus PR</span>
+                <span>GlobalComms</span>
+                <span>Elevate Digital</span>
+                <span>Synapse Agency</span>
+            </div>
+            <div class="marquee-content">
+                <span>ApexMedia</span>
+                <span>Nexus PR</span>
+                <span>GlobalComms</span>
+                <span>Elevate Digital</span>
+                <span>Synapse Agency</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bento Box Features -->
+    <section class="bento-section">
+        <div class="section-header reveal">
+            <h2>The Only PR Toolkit You Need</h2>
+            <p>Designed for scale. Built for speed. Stop manually auditing links and let our AI-driven engine do the heavy lifting.</p>
+        </div>
+        
+        <div class="bento-grid">
+            <!-- Large Card: Bulk Link Checker -->
+            <div class="bento-card card-large reveal">
+                <div class="bento-icon"><i class="fa-solid fa-bolt"></i></div>
+                <h3>Massive Scale Bulk Link Audits</h3>
+                <p>Paste thousands of URLs in a single click. Our engine parses the content, validates your strict "Must-Have" keywords, and flags "Shouldn't-Have" associations instantly. Never compromise brand safety again.</p>
+                
+                <div class="faux-ui-bar" style="margin-top: 40px;">
+                    <div class="faux-pill" style="width: 20%;"></div>
+                    <div class="faux-pill" style="width: 40%; background: rgba(255,255,255,0.1);"></div>
+                    <div class="faux-pill" style="width: 15%; background: rgba(255,107,107,0.8);"></div>
+                </div>
+            </div>
+
+            <!-- Tall Card: News Intelligence -->
+            <div class="bento-card card-tall reveal delay-1">
+                <div class="bento-icon" style="color: #a78bfa; background: rgba(124,58,237,0.1);"><i class="fa-solid fa-earth-americas"></i></div>
+                <h3>Global News Intelligence</h3>
+                <p>Track your brand across borders. Extract real-time articles from across the web, filter by country and date, and download structured datasets directly into your BI pipeline.</p>
+                <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px;"></div>
+                    <div style="height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px;"></div>
+                    <div style="height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px;"></div>
+                </div>
+            </div>
+
+            <!-- Standard Card: SOV -->
+            <div class="bento-card reveal delay-2">
+                <div class="bento-icon" style="color: #34d399; background: rgba(52,211,153,0.1);"><i class="fa-solid fa-chart-pie"></i></div>
+                <h3>Share of Voice Analyzer</h3>
+                <p>Upload raw CSV data from YouTube or media reports. Instantly calculate your share of voice against competitors with intelligent text analysis.</p>
+            </div>
+
+            <!-- Standard Card: Secure -->
+            <div class="bento-card reveal delay-3">
+                <div class="bento-icon" style="color: #f59e0b; background: rgba(245,158,11,0.1);"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3>Enterprise Security</h3>
+                <p>Your data belongs to you. Export results locally, manage role-based access, and rely on our 99.9% uptime infrastructure.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom CTA -->
+    <section class="bottom-cta reveal">
+        <h2>Ready to transform your PR workflow?</h2>
+        <p style="color: var(--text-secondary); font-size: 1.2rem; margin-bottom: 40px;">Join top agencies who are saving hundreds of hours every week.</p>
+        <a href="{{ url_for('workspace') }}" class="btn-primary-large" style="animation: none;">Create Your Free Account</a>
+    </section>
+</main>
+
+<script>
+    // Intersection Observer for scroll animations
+    document.addEventListener("DOMContentLoaded", function() {
+        const animatedElements = document.querySelectorAll('.reveal');
+        
+        // Initially pause animations if they are out of viewport
+        animatedElements.forEach(el => {
+            el.style.animationPlayState = 'paused';
+            el.style.opacity = '0'; // hide initially
+        });
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        animatedElements.forEach(el => observer.observe(el));
+    });
+</script>
+{% endblock %}
